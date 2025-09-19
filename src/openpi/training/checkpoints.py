@@ -8,8 +8,18 @@ from typing import Protocol
 
 from etils import epath
 import jax
-import orbax.checkpoint as ocp
-import orbax.checkpoint.future as future
+
+print("CHECKPOINTS: start import", flush=True)
+try:
+    print("CHECKPOINTS: importing orbax...", flush=True)
+    import orbax.checkpoint as ocp
+    import orbax.checkpoint.future as future
+    print("CHECKPOINTS: orbax imported", flush=True)
+except BaseException as e:
+    import traceback; print("CHECKPOINTS: orbax import failed"); traceback.print_exc()
+    raise
+# import orbax.checkpoint as ocp
+# import orbax.checkpoint.future as future
 
 from openpi.shared import array_typing as at
 import openpi.shared.normalize as _normalize

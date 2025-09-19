@@ -1,5 +1,8 @@
+print("im here6")
 from collections.abc import Iterator, Sequence
+print("im here6.1")
 import logging
+print("im here6.2")
 import multiprocessing
 import os
 import typing
@@ -7,17 +10,19 @@ from typing import Literal, Protocol, SupportsIndex, TypeVar
 
 import jax
 import jax.numpy as jnp
-import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
+print("im here7.1")
+# import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
+print("im here7.2")
 import numpy as np
 import torch
-
+print("im here7.3")
 import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
 import openpi.transforms as _transforms
 
 T_co = TypeVar("T_co", covariant=True)
-
+print("im here7")
 
 class Dataset(Protocol[T_co]):
     """Interface for a dataset with random access."""
@@ -137,18 +142,38 @@ def create_torch_dataset(
     if repo_id == "fake":
         return FakeDataset(model_config, num_samples=1024)
 
-    dataset_meta = lerobot_dataset.LeRobotDatasetMetadata(repo_id)
-    dataset = lerobot_dataset.LeRobotDataset(
-        data_config.repo_id,
-        delta_timestamps={
-            key: [t / dataset_meta.fps for t in range(action_horizon)] for key in data_config.action_sequence_keys
-        },
-    )
+    if repo_id == "egodex":
+        # Lazy import to avoid hard dependency unless used
+        from openpi.training.egodex_dataset import EgoDexSeqDataset
 
-    if data_config.prompt_from_task:
-        dataset = TransformedDataset(dataset, [_transforms.PromptFromLeRobotTask(dataset_meta.tasks)])
+        # Prefer a field on DataConfig; otherwise fall back to env var
+        # egodex_root = getattr(data_config, "egodex_root", None) or os.getenv("EGODEX_ROOT")
+        egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
+        if egodex_root is None:
+            raise ValueError(
+                "EgoDex selected but no dataset root provided. "
+                "Set data_config.egodex_root or the EGODEX_ROOT environment variable."
+            )
+        return EgoDexSeqDataset(
+            root_dir=str(egodex_root),
+            action_horizon=action_horizon//2,                                # use model’s horizon
+            image_size=getattr(data_config, "image_size", (224, 224)),
+            state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
+            window_stride=getattr(data_config, "window_stride", 1),
+            traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
+            max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
+        )
 
-    return dataset
+    if repo_id == "galaxea":
+        # Lazy import to avoid hard dependency unless used
+        from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
+
+        # Prefer a field on DataConfig; otherwise fall back to env var
+        # egodex_root = getattr(data_config, "egodex_root", None) or os.getenv("EGODEX_ROOT")
+        dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
+        return GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
+                                    chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
+                                    # TODO: action horizon // 2 is important if interleaving left and right actions
 
 
 def create_rlds_dataset(
