@@ -10,19 +10,15 @@ from typing import Literal, Protocol, SupportsIndex, TypeVar
 
 import jax
 import jax.numpy as jnp
-print("im here7.1")
-# import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
-print("im here7.2")
+# import lerobot.common.datasets.lerobot_dataset as lerobot_dataset # TODO: figure out why what's wrong with this import
 import numpy as np
 import torch
-print("im here7.3")
 import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
 import openpi.transforms as _transforms
 
 T_co = TypeVar("T_co", covariant=True)
-print("im here7")
 
 class Dataset(Protocol[T_co]):
     """Interface for a dataset with random access."""
@@ -158,6 +154,7 @@ def create_torch_dataset(
             root_dir=str(egodex_root),
             action_horizon=action_horizon//2,                                # use model’s horizon
             image_size=getattr(data_config, "image_size", (224, 224)),
+            # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
             state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
             window_stride=getattr(data_config, "window_stride", 1),
             traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling

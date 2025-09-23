@@ -1,5 +1,8 @@
 """Compute normalization statistics for a config.
 
+usage:
+uv run scripts/compute_norm_stats.py --config-name pi05_egodex
+
 This script is used to compute the normalization statistics for a given config. It
 will compute the mean and standard deviation of the data in the dataset and save it
 to the config assets directory.
@@ -99,12 +102,20 @@ def main(config_name: str, max_frames: int | None = None):
             data_config, config.model.action_horizon, config.batch_size, config.model, config.num_workers, max_frames
         )
 
+    print(num_batches, "batches in dataset")
     keys = ["state", "actions"]
     stats = {key: normalize.RunningStats() for key in keys}
 
     for batch in tqdm.tqdm(data_loader, total=num_batches, desc="Computing stats"):
         for key in keys:
             stats[key].update(np.asarray(batch[key]))
+            print("processing")
+        # exit after a few batches
+        # if stats["state"].count > 10:
+        #     print("ending early")
+        #     break
+
+    
 
     norm_stats = {key: stats.get_statistics() for key, stats in stats.items()}
 

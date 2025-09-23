@@ -3,7 +3,6 @@ import functools
 import logging
 import platform
 from typing import Any
-
 import etils.epath as epath
 import flax.nnx as nnx
 from flax.training import common_utils
@@ -15,18 +14,26 @@ import numpy as np
 import optax
 import tqdm_loggable.auto as tqdm
 import wandb
-
 import openpi.models.model as _model
+
 import openpi.shared.array_typing as at
 import openpi.shared.nnx_utils as nnx_utils
-import openpi.training.checkpoints as _checkpoints
+print("→ about to import openpi.training.checkpoints", flush=True)
+try:
+    import openpi.training.checkpoints as _checkpoints
+    print("✓ imported checkpoints", flush=True)
+except SystemExit as e:
+    print(f"SystemExit while importing checkpoints: code={e.code}", flush=True)
+    raise
+except BaseException as e:
+    import traceback; traceback.print_exc()
+    raise
 import openpi.training.config as _config
 import openpi.training.data_loader as _data_loader
 import openpi.training.optimizer as _optimizer
 import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
 import openpi.training.weight_loaders as _weight_loaders
-
 
 def init_logging():
     """Custom logging format for better readability."""
@@ -194,21 +201,17 @@ def train_step(
 def main(config: _config.TrainConfig):
     init_logging()
     logging.info(f"Running on: {platform.node()}")
-
     if config.batch_size % jax.device_count() != 0:
         raise ValueError(
             f"Batch size {config.batch_size} must be divisible by the number of devices {jax.device_count()}."
         )
-
     jax.config.update("jax_compilation_cache_dir", str(epath.Path("~/.cache/jax").expanduser()))
-
     rng = jax.random.key(config.seed)
     train_rng, init_rng = jax.random.split(rng)
 
     mesh = sharding.make_mesh(config.fsdp_devices)
     data_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec(sharding.DATA_AXIS))
     replicated_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
-
     checkpoint_manager, resuming = _checkpoints.initialize_checkpoint_dir(
         config.checkpoint_dir,
         keep_period=config.keep_period,
@@ -216,7 +219,6 @@ def main(config: _config.TrainConfig):
         resume=config.resume,
     )
     init_wandb(config, resuming=resuming, enabled=config.wandb_enabled)
-
     data_loader = _data_loader.create_data_loader(
         config,
         sharding=data_sharding,
@@ -225,7 +227,6 @@ def main(config: _config.TrainConfig):
     data_iter = iter(data_loader)
     batch = next(data_iter)
     logging.info(f"Initialized data loader:\n{training_utils.array_tree_to_info(batch)}")
-
     # Log images from first batch to sanity check.
     images_to_log = [
         wandb.Image(np.concatenate([np.array(img[i]) for img in batch[0].images.values()], axis=1))
@@ -236,10 +237,8 @@ def main(config: _config.TrainConfig):
     train_state, train_state_sharding = init_train_state(config, init_rng, mesh, resume=resuming)
     jax.block_until_ready(train_state)
     logging.info(f"Initialized train state:\n{training_utils.array_tree_to_info(train_state.params)}")
-
     if resuming:
         train_state = _checkpoints.restore_state(checkpoint_manager, train_state, data_loader)
-
     ptrain_step = jax.jit(
         functools.partial(train_step, config),
         in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
@@ -254,7 +253,6 @@ def main(config: _config.TrainConfig):
         total=config.num_train_steps,
         dynamic_ncols=True,
     )
-
     infos = []
     for step in pbar:
         with sharding.set_mesh(mesh):

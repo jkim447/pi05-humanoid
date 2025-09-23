@@ -151,6 +151,12 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+if episodes is None:
+    episodes = []
+    # TODO: uncomment me!
+    part_dirs = sorted(
+        d for d in os.listdir(root_dir)
+        if os.path.isdir(os.path.join(root_dir, d)) and (d.sta
 # Pyre type checker
 .pyre/
 
@@ -166,3 +172,8 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+dataset_test_images/
+dataset_test_images_eval/
+vis_demo*/
+

@@ -1,12 +1,79 @@
 """
 Usage (for testing):
-uv run src/openpi/training/egodex_dataset.py
+uv run scripts/test_policy_simple_human.py
 """
 import os, glob, cv2, h5py
 import numpy as np
 from typing import List, Tuple, Dict, Any, Literal, Optional
 from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
+
+# Intrinsics
+K = np.array([[736.6339, 0., 960.],
+              [0., 736.6339, 540.],
+              [0., 0., 1.]], dtype=np.float32)
+XYZ_SLICE = slice(0, 3)  # xyz are columns 0:3
+PRED_L_XYZ = slice(0, 3)
+PRED_R_XYZ = slice(9, 12)
+
+GT_HUM_L_XYZ = slice(0, 3)
+GT_HUM_R_XYZ = slice(9, 12)
+
+
+def extract_trajs(pred, actions):
+    """pred: (T,26)  actions: (T,32)  -- per-frame, NOT split L/R."""
+    T = min(len(pred), len(actions))
+    pred = pred[:T]; actions = actions[:T]
+
+    L_pred_xyz = pred[0::2, PRED_L_XYZ]
+    R_pred_xyz = pred[0::2, PRED_R_XYZ]
+    L_gt_xyz   = actions[0::2, GT_HUM_L_XYZ]
+    R_gt_xyz   = actions[0::2, GT_HUM_R_XYZ]
+    return L_pred_xyz, R_pred_xyz, L_gt_xyz, R_gt_xyz
+
+def _project(xyz: np.ndarray, K: np.ndarray) -> np.ndarray:
+    """(N,3) xyz -> (N,2) uv. Invalid Z -> NaN."""
+    uv = np.full((len(xyz), 2), np.nan, np.float32)
+    Z = xyz[:, 2]
+    m = Z > 1e-6
+    uv[m, 0] = K[0,0]*(xyz[m,0]/Z[m]) + K[0,2]
+    uv[m, 1] = K[1,1]*(xyz[m,1]/Z[m]) + K[1,2]
+    return uv
+
+def _draw_traj(img, uv, color, label):
+    pts = [(int(round(u)), int(round(v))) for u,v in uv if np.isfinite(u) and np.isfinite(v)]
+    if len(pts) >= 2:
+        cv2.polylines(img, [np.array(pts, np.int32)], False, color, 2, cv2.LINE_AA)
+    for p in pts:
+        cv2.circle(img, p, 2, color, -1, cv2.LINE_AA)
+    if pts:
+        cv2.putText(img, label, pts[0], cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1, cv2.LINE_AA)
+
+def overlay_full_traj(image_rgb, pred, gt):
+    """
+    image_rgb: (H,W,3) float32 [0,1] or uint8 RGB
+    pred, gt: (T,32) action seqs, even rows=Left, odd rows=Right
+    """
+    # make BGR image
+    img = (np.clip(image_rgb*255,0,255).astype(np.uint8)
+           if image_rgb.dtype!=np.uint8 else image_rgb.copy())
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    L_pred_xyz, R_pred_xyz, L_gt_xyz, R_gt_xyz = extract_trajs(pred, actions)
+
+    # project to pixels
+    L_pred_uv = _project(L_pred_xyz, K)
+    R_pred_uv = _project(R_pred_xyz, K)
+    L_gt_uv   = _project(L_gt_xyz,   K)
+    R_gt_uv   = _project(R_gt_xyz,   K)
+
+    # draw
+    _draw_traj(img, L_gt_uv,   (0,200,0),   "L GT")
+    _draw_traj(img, L_pred_uv, (0,255,255), "L Pred")
+    _draw_traj(img, R_gt_uv,   (0,0,200),   "R GT")
+    _draw_traj(img, R_pred_uv, (255,0,255), "R Pred")
+
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 # ---------- small SE(3) helpers ----------
 def _inv(T: np.ndarray) -> np.ndarray:
@@ -76,10 +143,8 @@ class EgoDexSeqDataset(Dataset):
         # TODO: comment me out!
         part_dirs = ["/iris/projects/humanoid/dataset/ego_dex/part1"]
 
-        # look through each part directories
         for part in part_dirs:
             part_path = os.path.join(root_dir, part)
-            # look through each task directory
             for task in sorted(os.listdir(part_path)):
                 print("I'm scanning through:", part_path, task)
                 task_path = os.path.join(part_path, task)
@@ -100,9 +165,6 @@ class EgoDexSeqDataset(Dataset):
                             N = int(f["transforms"]["leftHand"].shape[0])
                         if N >= self.H:
                             episodes.append((h5f, mp4f, N))
-                            # TODO: remove me
-                            # if len(episodes) > 10:
-                            #     break
                     except Exception:
                         continue
 
@@ -176,6 +238,17 @@ class EgoDexSeqDataset(Dataset):
         rgb = rgb.astype(np.float32) / 255.0  # normalize to 0–1
         return rgb  # float32
 
+    def _read_rgb_orig(self, mp4_path: str, t: int) -> np.ndarray:
+        cap = cv2.VideoCapture(mp4_path)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(t))
+        ok, frame_bgr = cap.read()
+        cap.release()
+        if not ok or frame_bgr is None:
+            raise RuntimeError(f"Failed to read frame {t} from {mp4_path}")
+        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        rgb = rgb.astype(np.float32) / 255.0  # normalize to 0–1
+        return rgb  # float32
+
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         ep_id, t0 = self.index[idx]
@@ -183,6 +256,7 @@ class EgoDexSeqDataset(Dataset):
 
         # image at start frame (you can switch to center frame if you prefer)
         image = self._read_rgb(mp4_path, t0)
+        image_orig = self._read_rgb_orig(mp4_path, t0)
 
         with h5py.File(h5_path, "r") as f:
 
@@ -216,6 +290,7 @@ class EgoDexSeqDataset(Dataset):
 
         return {
             "image":   image,          # uint8, (H,W,3)
+            "image_orig": image_orig,      # keep original for saving
             "state":   state.astype(np.float32),      # (D,)
             "actions": actions.astype(np.float32),    # (H,D)
             "task":    task,
@@ -226,48 +301,92 @@ class EgoDexSeqDataset(Dataset):
 ############################################
 ############################################
 
-# import os
-# import random
-# import cv2
-# from pathlib import Path
-# import numpy as np
-# import torch
+import os
+import random
+import cv2
+from pathlib import Path
+import numpy as np
+import torch
+import pandas as pd
+import numpy as np
+import jax.numpy as jnp
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-# # === configuration ===
-# root_dir = "/iris/projects/humanoid/dataset/ego_dex"   # <-- change to your dataset root
-# save_dir = Path("dataset_test_images")
-# save_dir.mkdir(exist_ok=True)
+from openpi.training import config as cfg
+from openpi.policies import policy_config
+from openpi.shared import download
+from scipy.spatial.transform import Rotation as R
 
-# # === create dataset ===
-# ds = EgoDexSeqDataset(
-#     root_dir=root_dir,
-#     action_horizon=5,        # example horizon
-#     image_size=(224, 224),
-#     state_format="ego",      # or "ego"
-#     window_stride=1,
-#     traj_per_task = 1
-# )
+# === configuration ===
+root_dir = "/iris/projects/humanoid/dataset/ego_dex"   # <-- change to your dataset root
+save_dir = Path("dataset_test_images_eval")
+save_dir.mkdir(exist_ok=True)
 
-# print(f"Dataset length: {len(ds)} samples")
+# === create dataset ===
+ds = EgoDexSeqDataset(
+    root_dir=root_dir,
+    action_horizon=50,        # example horizon
+    image_size=(224, 224),
+    state_format="ego_split",      # or "ego"
+    window_stride=1,
+    traj_per_task = 1
+)
 
-# # === test retrieval ===
-# num_samples_to_test = 5
-# indices = random.sample(range(len(ds)), num_samples_to_test)
+print(f"Dataset length: {len(ds)} samples")
 
-# for idx in indices:
-#     sample = ds[idx]
-#     image = sample["image"]
-#     state = sample["state"]
-#     actions = sample["actions"]
-#     task = sample["task"]
+# === test retrieval ===
+num_samples_to_test = 100
+indices = random.sample(range(len(ds)), num_samples_to_test)
 
-#     print(f"Sample {idx}:")
-#     print(f"  Image shape:   {image.shape}  dtype={image.dtype}")
-#     print(f"  State shape:   {state.shape}")
-#     print(f"  Actions shape: {actions.shape}")
-#     print(f"  Task:          {task}")
+for idx in indices:
+    sample = ds[idx]
+    image = sample["image"]
+    image_orig = sample["image_orig"]
+    state = sample["state"]
+    actions = sample["actions"]
+    task = sample["task"]
 
-#     # save image as RGB
+    print(f"Sample {idx}:")
+    print(f"  Image shape:   {image.shape}  dtype={image.dtype}")
+    print(f"  State shape:   {state.shape}")
+    print(f"  Actions shape: {actions.shape}")
+    print(f"  Task:          {task}")
+
+    # ─────────────── build inference example dict ───────────────────
+    example = {
+        "state": state,
+        "image": image,
+        "prompt": task,
+    }
+    example = {k: jnp.asarray(v) if isinstance(v, np.ndarray) else v
+            for k, v in example.items()}
+
+    # ──────────────────── load policy & infer ───────────────────────
+    conf      = cfg.get_config("pi05_egodex")
+    ckpt_dir  = download.maybe_download("checkpoints/pi05_egodex/egodex_experiment/13000")
+    policy    = policy_config.create_trained_policy(conf, ckpt_dir)
+
+    pred = np.asarray(policy.infer(example)["actions"])   # shape (50, 26)
+
+    overlay = overlay_full_traj(image_orig, pred, actions)
+    out_png = save_dir / f"{task}_overlaytraj_{idx}.png"
+    cv2.imwrite(str(out_png), cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+    print("Saved full traj overlay:", out_png)
+
+    # print(pred.shape, "im here!")
+    # traj_pred_L = pred[0::2, :][0:3]
+    # traj_gt_L   = actions[0::2, :][0:3]
+
+    # traj_pred_R = pred[1::2, :][0:3]
+    # traj_gt_R   = actions[1::2, :][0:3]
+
+    
+        
+
+    # save image as RGB
 #     img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 #     img_bgr_u8 = np.clip(img_bgr * 255.0, 0, 255).astype(np.uint8)
 #     save_path = save_dir / f"sample_{idx}_{task}.png"
