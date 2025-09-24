@@ -53,7 +53,7 @@ def create_torch_dataloader(
     data_loader = _data_loader.TorchDataLoader(
         dataset,
         local_batch_size=batch_size,
-        num_workers=num_workers,
+        num_workers=8,
         shuffle=shuffle,
         num_batches=num_batches,
     )
@@ -109,7 +109,7 @@ def main(config_name: str, max_frames: int | None = None):
     for batch in tqdm.tqdm(data_loader, total=num_batches, desc="Computing stats"):
         for key in keys:
             stats[key].update(np.asarray(batch[key]))
-            print("processing")
+            # print("processing")
         # exit after a few batches
         # if stats["state"].count > 10:
         #     print("ending early")

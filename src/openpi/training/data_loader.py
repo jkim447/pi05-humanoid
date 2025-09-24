@@ -1,8 +1,5 @@
-print("im here6")
 from collections.abc import Iterator, Sequence
-print("im here6.1")
 import logging
-print("im here6.2")
 import multiprocessing
 import os
 import typing
@@ -159,7 +156,8 @@ def create_torch_dataset(
             window_stride=getattr(data_config, "window_stride", 1),
             traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
             max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
-        )
+            rebuild_index=False,  # TODO: make sure this option is what you want!
+            load_images = False)   # TODO: make sure this option is what you want!
 
     if repo_id == "galaxea":
         # Lazy import to avoid hard dependency unless used

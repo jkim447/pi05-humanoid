@@ -7,6 +7,8 @@ import numpy as np
 from typing import List, Tuple, Dict, Any, Literal, Optional
 from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
+import json
+from dataclasses import asdict, dataclass
 
 # ---------- small SE(3) helpers ----------
 def _inv(T: np.ndarray) -> np.ndarray:
@@ -23,6 +25,38 @@ def _rotmat_to_rot6d(Rm: np.ndarray) -> np.ndarray:
 
 def _pose_world_to_cam(T_world_obj: np.ndarray, T_world_cam: np.ndarray) -> np.ndarray:
     return _inv(T_world_cam) @ T_world_obj
+
+
+@dataclass
+class Episode:
+    h5: str
+    mp4: str
+    N: int
+
+def _index_path(root_dir: str) -> str:
+    return os.path.join(root_dir, "episodes_index.jsonl")
+
+def _save_index(root_dir: str, episodes: list[Episode]) -> None:
+    path = _index_path(root_dir)
+    with open(path, "w") as f:
+        for ep in episodes:
+            f.write(json.dumps(asdict(ep)) + "\n")
+
+def _load_index(root_dir: str) -> list[Episode] | None:
+    path = _index_path(root_dir)
+    if not os.path.exists(path):
+        return None
+    out: list[Episode] = []
+    with open(path, "r") as f:
+        for line in f:
+            try:
+                obj = json.loads(line)
+                # cheap validation: files still exist
+                if os.path.exists(obj["h5"]) and os.path.exists(obj["mp4"]):
+                    out.append(Episode(h5=obj["h5"], mp4=obj["mp4"], N=int(obj["N"])))
+            except Exception:
+                continue
+    return out
 
 # ---------- simplified, windowed dataset ----------
 class EgoDexSeqDataset(Dataset):
@@ -48,6 +82,8 @@ class EgoDexSeqDataset(Dataset):
         window_stride: int = 1,                 # step for consecutive windows
         traj_per_task: Optional[int] = None,    # optional cap per task
         max_episodes: Optional[int] = None,     # optional global cap
+        rebuild_index: bool = False,   # <— NEW
+        load_images: bool = True,
     ):
         assert action_horizon >= 1
         self.root_dir = root_dir
@@ -55,6 +91,7 @@ class EgoDexSeqDataset(Dataset):
         self.state_format = state_format
         self.H = int(action_horizon)
         self.stride = max(1, int(window_stride))
+        self.load_images = load_images
 
         self.wrists = ["leftHand", "rightHand"]
         self.fingertips = [
@@ -62,66 +99,76 @@ class EgoDexSeqDataset(Dataset):
             "rightThumbTip","rightIndexFingerTip","rightMiddleFingerTip","rightRingFingerTip","rightLittleFingerTip",
         ]
 
-        # 1) collect (h5, mp4, N) per episode
-        episodes: List[Tuple[str, str, int]] = []
-        # TODO: uncomment me!
-        part_dirs = sorted(
-            d for d in os.listdir(root_dir)
-            if os.path.isdir(os.path.join(root_dir, d)) and (d.startswith("part") or d in ("test","extra"))
-        )
+        # 1) collect (h5, mp4, N) per episode, with on-disk cache
+        episodes: list[Episode] | None = None
+        if not rebuild_index:
+            episodes = _load_index(self.root_dir)
+            print("successfully loaded cached index:", len(episodes) if episodes else 0, "episodes")
 
-        # print(parts_dirs)
-        # assert False
+        if episodes is None:
+            print("scanning dataset for (hdf5, mp4) pairs, this may take a while...")
+            episodes = []
+            # TODO: uncomment me!
+            part_dirs = sorted(
+                d for d in os.listdir(root_dir)
+                if os.path.isdir(os.path.join(root_dir, d)) and (d.startswith("part") or d in ("test","extra"))
+            )
 
-        # TODO: comment me out!
-        part_dirs = ["/iris/projects/humanoid/dataset/ego_dex/part1"]
+            # TODO: comment me out!
+            # part_dirs = ["/iris/projects/humanoid/dataset/ego_dex/part1"]
+            print("found part dirs:", part_dirs)
 
-        # look through each part directories
-        for part in part_dirs:
-            part_path = os.path.join(root_dir, part)
-            # look through each task directory
-            for task in sorted(os.listdir(part_path)):
-                print("I'm scanning through:", part_path, task)
-                task_path = os.path.join(part_path, task)
-                if not os.path.isdir(task_path): 
-                    continue
-                h5_files = sorted(glob.glob(os.path.join(task_path, "*.hdf5")))
-                pairs = []
-                for h5f in h5_files:
-                    mp4f = h5f.replace(".hdf5", ".mp4")
-                    if os.path.exists(mp4f):
-                        pairs.append((h5f, mp4f))
-                if traj_per_task is not None and len(pairs) > traj_per_task:
-                    idxs = np.random.choice(len(pairs), size=traj_per_task, replace=False)
-                    pairs = [pairs[i] for i in idxs]
-                for h5f, mp4f in pairs:
-                    try:
-                        with h5py.File(h5f, "r") as f:
-                            N = int(f["transforms"]["leftHand"].shape[0])
-                        if N >= self.H:
-                            episodes.append((h5f, mp4f, N))
-                            # TODO: remove me
-                            # if len(episodes) > 10:
-                            #     break
-                    except Exception:
+            for part in part_dirs:
+                part_path = os.path.join(root_dir, part)
+                for task in sorted(os.listdir(part_path)):
+                    print("I'm scanning through:", part_path, task)
+                    task_path = os.path.join(part_path, task)
+                    if not os.path.isdir(task_path):
+                        print("ALERT! Skipping non-directory:", task_path)
                         continue
 
-        # TODO: uncomment me!
-        max_episodes = 10
+                    h5_files = sorted(glob.glob(os.path.join(task_path, "*.hdf5")))
+                    pairs = []
+                    for h5f in h5_files:
+                        mp4f = h5f.replace(".hdf5", ".mp4")
+                        if os.path.exists(mp4f):
+                            pairs.append((h5f, mp4f))
+
+                    # TODO: remove this line! 
+                    # traj_per_task = 3
+                    if traj_per_task is not None and len(pairs) > traj_per_task:
+                        idxs = np.random.choice(len(pairs), size=traj_per_task, replace=False)
+                        pairs = [pairs[i] for i in idxs]
+
+                    for h5f, mp4f in pairs:
+                        try:
+                            with h5py.File(h5f, "r") as f:
+                                N = int(f["transforms"]["leftHand"].shape[0])
+                            if N >= self.H:
+                                episodes.append(Episode(h5=h5f, mp4=mp4f, N=N))
+                        except Exception:
+                            continue
+
+            # persist for future runs
+            _save_index(self.root_dir, episodes)
+            
+
+        # optional global cap
         if max_episodes is not None:
             episodes = episodes[:max_episodes]
         if not episodes:
             raise RuntimeError(f"No valid (hdf5, mp4) pairs with at least {self.H} frames under {root_dir}")
 
-        self.episodes = episodes
+        # keep tuple form used later
+        self.episodes = [(ep.h5, ep.mp4, ep.N) for ep in episodes]
 
-        # 2) precompute flat list of valid window starts: (ep_id, t0)
-        #    windows start at t0 = 0, stride, 2*stride, ..., <= N - H
         index = []
         for ep_id, (_, _, N) in enumerate(self.episodes):
-            last_start = N - self.H # TODO: this is not good, need to pad!
+            last_start = N - self.H  # TODO: this is not good, need to pad!
             index.extend((ep_id, t0) for t0 in range(0, last_start + 1, self.stride))
-        self.index: List[Tuple[int,int]] = index
+        self.index: List[Tuple[int, int]] = index
+
+        # assert False
 
     def __len__(self) -> int:
         return len(self.index)
@@ -182,7 +229,12 @@ class EgoDexSeqDataset(Dataset):
         h5_path, mp4_path, N = self.episodes[ep_id]
 
         # image at start frame (you can switch to center frame if you prefer)
-        image = self._read_rgb(mp4_path, t0)
+        # image at start frame (you can switch to center frame if you prefer)
+        if self.load_images:
+            image = self._read_rgb(mp4_path, t0)
+        else:
+            H, W = self.image_size
+            image = np.zeros((H, W, 3), dtype=np.float32)  # <— NEW: no image I/O for stats
 
         with h5py.File(h5_path, "r") as f:
 
