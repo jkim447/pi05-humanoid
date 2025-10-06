@@ -95,7 +95,7 @@ def _in_bounds(p, w, h):
 
 # ──────────────────── load policy & warm up ─────────────────────
 conf      = cfg.get_config("pi05_galaxea")
-ckpt_dir  = download.maybe_download("checkpoints/pi05_galaxea/my_galaxea/28000")
+ckpt_dir  = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/27000")
 policy    = policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ───────────────────────── episode loop ─────────────────────────

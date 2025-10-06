@@ -1,3 +1,19 @@
+"""
+usage:
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_libero --exp-name=my_experiment --overwrite
+
+To run cluster command:
+
+sbatch -A iris -p iris -q normal train.sh
+
+To monitor the job (replace with you job number):
+
+squeue -j 12557377
+
+To track the output of the job:
+
+tail -f pi05-12557377.out
+"""
 import dataclasses
 import functools
 import logging

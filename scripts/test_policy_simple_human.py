@@ -366,7 +366,8 @@ for idx in indices:
 
     # ──────────────────── load policy & infer ───────────────────────
     conf      = cfg.get_config("pi05_egodex")
-    ckpt_dir  = download.maybe_download("checkpoints/pi05_egodex/egodex_experiment/13000")
+    # ckpt_dir  = download.maybe_download("checkpoints/pi05_egodex/egodex_experiment/13000")
+    ckpt_dir  = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/24000")
     policy    = policy_config.create_trained_policy(conf, ckpt_dir)
 
     pred = np.asarray(policy.infer(example)["actions"])   # shape (50, 26)

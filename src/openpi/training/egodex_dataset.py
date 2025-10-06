@@ -9,6 +9,7 @@ from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
 import json
 from dataclasses import asdict, dataclass
+import random
 
 # ---------- small SE(3) helpers ----------
 def _inv(T: np.ndarray) -> np.ndarray:
@@ -105,6 +106,34 @@ class EgoDexSeqDataset(Dataset):
             episodes = _load_index(self.root_dir)
             print("successfully loaded cached index:", len(episodes) if episodes else 0, "episodes")
 
+            # ---- pick a fixed number of episodes per task ----
+            # TODO: change as needed (ideally delete for training)
+            episodes_per_task = 50        # <= choose how many per task
+            rng = random.Random(42)      # <= set seed for reproducibility (or remove)
+
+            def _task_name(ep: Episode) -> str:
+                # task is the folder right above the file, e.g.
+                # .../part3/open_close_insert_remove_case/811.hdf5  -> "open_close_insert_remove_case"
+                return os.path.basename(os.path.dirname(ep.h5))
+
+            # group by task
+            by_task: dict[str, list[Episode]] = {}
+            for ep in episodes:
+                by_task.setdefault(_task_name(ep), []).append(ep)
+
+            # sample K per task (or all if fewer)
+            picked: list[Episode] = []
+            for task, eps in by_task.items():
+                rng.shuffle(eps)                 # simple random; remove if you prefer sorted order
+                picked.extend(eps[:episodes_per_task])
+
+            # optional: shuffle overall, then cap with max_episodes if you also want a global limit
+            # rng.shuffle(picked)
+            # if (max_episodes is not None) and (len(picked) > max_episodes):
+            #     picked = picked[:max_episodes]
+
+            episodes = picked
+
         if episodes is None:
             print("scanning dataset for (hdf5, mp4) pairs, this may take a while...")
             episodes = []
@@ -134,8 +163,9 @@ class EgoDexSeqDataset(Dataset):
                         if os.path.exists(mp4f):
                             pairs.append((h5f, mp4f))
 
-                    # TODO: remove this line! 
-                    # traj_per_task = 3
+                    # TODO: uncomment if you want to limit to few trajs since it takes forever, but possibly irrelevant at this point since
+                    # I've scoured through the entire dataset and saved all the episodes to a file to read from later
+                    # traj_per_task = 5
                     if traj_per_task is not None and len(pairs) > traj_per_task:
                         idxs = np.random.choice(len(pairs), size=traj_per_task, replace=False)
                         pairs = [pairs[i] for i in idxs]
@@ -145,6 +175,7 @@ class EgoDexSeqDataset(Dataset):
                             with h5py.File(h5f, "r") as f:
                                 N = int(f["transforms"]["leftHand"].shape[0])
                             if N >= self.H:
+                                print(h5f, mp4)
                                 episodes.append(Episode(h5=h5f, mp4=mp4f, N=N))
                         except Exception:
                             continue
@@ -152,13 +183,6 @@ class EgoDexSeqDataset(Dataset):
             # persist for future runs
             _save_index(self.root_dir, episodes)
             
-
-        # optional global cap
-        if max_episodes is not None:
-            episodes = episodes[:max_episodes]
-        if not episodes:
-            raise RuntimeError(f"No valid (hdf5, mp4) pairs with at least {self.H} frames under {root_dir}")
-
         # keep tuple form used later
         self.episodes = [(ep.h5, ep.mp4, ep.N) for ep in episodes]
 
@@ -211,17 +235,31 @@ class EgoDexSeqDataset(Dataset):
         return self._state_ego(f, t) if self.state_format in ("ego", "ego_split") else self._state_pi0(f, t)
 
     # ---- IO helpers ----
-    def _read_rgb(self, mp4_path: str, t: int) -> np.ndarray:
-        cap = cv2.VideoCapture(mp4_path)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int(t))
-        ok, frame_bgr = cap.read()
-        cap.release()
-        if not ok or frame_bgr is None:
-            raise RuntimeError(f"Failed to read frame {t} from {mp4_path}")
-        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        rgb = cv2.resize(rgb, self.image_size, interpolation=cv2.INTER_AREA)
-        rgb = rgb.astype(np.float32) / 255.0  # normalize to 0–1
-        return rgb  # float32
+    def _read_rgb(self, mp4_path: str, t: int) -> np.ndarray: 
+        H, W = self.image_size
+
+        def _blank() -> np.ndarray:
+            return np.zeros((H, W, 3), dtype=np.float32)
+
+        # Try a few times (helps with flaky decoders)
+        for attempt in range(3):
+            cap = cv2.VideoCapture(mp4_path)
+            if not cap.isOpened():
+                cap.release()
+                continue
+
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(t))
+            ok, frame_bgr = cap.read()
+            cap.release()
+
+            if ok and frame_bgr is not None:
+                rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+                rgb = cv2.resize(rgb, (W, H), interpolation=cv2.INTER_AREA)
+                return rgb.astype(np.float32) / 255.0
+
+        # Fallback: use blank image if all attempts fail
+        print(f"[WARN] Failed to read frame {t} from {mp4_path}. Using blank image.")
+        return _blank()
 
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:

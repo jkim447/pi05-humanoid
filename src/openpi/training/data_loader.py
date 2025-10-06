@@ -14,6 +14,8 @@ import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
 import openpi.transforms as _transforms
+from torch.utils.data import ConcatDataset
+
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -135,29 +137,22 @@ def create_torch_dataset(
     if repo_id == "fake":
         return FakeDataset(model_config, num_samples=1024)
 
-    if repo_id == "egodex":
-        # Lazy import to avoid hard dependency unless used
-        from openpi.training.egodex_dataset import EgoDexSeqDataset
-
-        # Prefer a field on DataConfig; otherwise fall back to env var
-        # egodex_root = getattr(data_config, "egodex_root", None) or os.getenv("EGODEX_ROOT")
-        egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
-        if egodex_root is None:
-            raise ValueError(
-                "EgoDex selected but no dataset root provided. "
-                "Set data_config.egodex_root or the EGODEX_ROOT environment variable."
-            )
-        return EgoDexSeqDataset(
-            root_dir=str(egodex_root),
-            action_horizon=action_horizon//2,                                # use model’s horizon
-            image_size=getattr(data_config, "image_size", (224, 224)),
-            # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
-            state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
-            window_stride=getattr(data_config, "window_stride", 1),
-            traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
-            max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
-            rebuild_index=False,  # TODO: make sure this option is what you want!
-            load_images = False)   # TODO: make sure this option is what you want!
+    # TODO: undo me (likely irrelevant now since I'm now co-training on robot and human dataset)
+    # if repo_id == "egodex":
+    #     # Lazy import to avoid hard dependency unless used
+    #     from openpi.training.egodex_dataset import EgoDexSeqDataset
+    #     egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
+    #     return EgoDexSeqDataset(
+    #         root_dir=str(egodex_root),
+    #         action_horizon=action_horizon//2,                                # use model’s horizon
+    #         image_size=getattr(data_config, "image_size", (224, 224)),
+    #         # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
+    #         state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
+    #         window_stride=getattr(data_config, "window_stride", 1),
+    #         traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
+    #         max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
+    #         rebuild_index=False,  # TODO: make sure this option is what you want!
+    #         load_images = False)   # TODO: make sure this option is what you want!
 
     if repo_id == "galaxea":
         # Lazy import to avoid hard dependency unless used
@@ -169,6 +164,36 @@ def create_torch_dataset(
         return GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
                                     chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
                                     # TODO: action horizon // 2 is important if interleaving left and right actions
+
+    if repo_id == 'egodex':
+        # Lazy import to avoid hard dependency unless used
+        from openpi.training.egodex_dataset import EgoDexSeqDataset
+        egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
+        egodex_dataset = EgoDexSeqDataset(
+            root_dir=str(egodex_root),
+            action_horizon=action_horizon//2,                                # use model’s horizon
+            image_size=getattr(data_config, "image_size", (224, 224)),
+            # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
+            state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
+            window_stride=getattr(data_config, "window_stride", 1),
+            traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
+            max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
+            rebuild_index=False,  # TODO: choose correctly
+            load_images = True)   # TODO: choose correctly # second TODO: set to true to start training
+
+        # TODO: remove me to resume co-training
+        # return egodex_dataset
+
+        # Lazy import to avoid hard dependency unless used
+        from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
+        dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
+        galaxea_dataset = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
+                                    chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
+                                    # TODO: action horizon // 2 is important if interleaving left and right actions
+
+        # Concatenate them, #TODO: consider adding weights to balance them
+        return egodex_dataset, galaxea_dataset 
+
 
 
 def create_rlds_dataset(
@@ -260,6 +285,8 @@ def create_data_loader(
         framework: The framework to use ("jax" or "pytorch").
     """
     data_config = config.data.create(config.assets_dirs, config.model)
+    data_config2 = config.data2.create(config.assets_dirs, config.model) # TODO: clean this design
+
     logging.info(f"data_config: {data_config}")
 
     if data_config.rlds_data_dir is not None:
@@ -274,7 +301,7 @@ def create_data_loader(
             framework=framework,
         )
     return create_torch_data_loader(
-        data_config,
+        data_config, data_config2,
         model_config=config.model,
         action_horizon=config.model.action_horizon,
         batch_size=config.batch_size,
@@ -290,6 +317,7 @@ def create_data_loader(
 
 def create_torch_data_loader(
     data_config: _config.DataConfig,
+    data_config2: _config.DataConfig,
     model_config: _model.BaseModelConfig,
     action_horizon: int,
     batch_size: int,
@@ -319,8 +347,21 @@ def create_torch_data_loader(
             execute in the main process.
         seed: The seed to use for shuffling the data.
     """
-    dataset = create_torch_dataset(data_config, action_horizon, model_config)
-    dataset = transform_dataset(dataset, data_config, skip_norm_stats=skip_norm_stats)
+
+    # TODO: uncomment me for co-training (10/05)
+    egodex_dataset, galaxea_dataset = create_torch_dataset(data_config, action_horizon, model_config)
+    egodex_dataset = transform_dataset(egodex_dataset, data_config, skip_norm_stats=skip_norm_stats)
+    galaxea_dataset = transform_dataset(galaxea_dataset, data_config2, skip_norm_stats=skip_norm_stats)
+    dataset = ConcatDataset([egodex_dataset, galaxea_dataset])
+
+    # TODO: comment me for co-training (10/05)
+    # egodex_dataset = create_torch_dataset(data_config, action_horizon, model_config)
+    # dataset = transform_dataset(egodex_dataset, data_config, skip_norm_stats=skip_norm_stats)
+
+    if not skip_norm_stats:
+        print("We are normalizing the data")
+    else:
+        print("We are NOT normalizing the data")
 
     # Use TorchDataLoader for both frameworks
     # For PyTorch DDP, create DistributedSampler and divide batch size by world size

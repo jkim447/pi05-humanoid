@@ -171,7 +171,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             "image":   image.astype(np.float32),   # (H, W, 3) in [0,1]
             "state":   state.astype(np.float32),   # (32,)
             "actions": actions_out.astype(np.float32),  # (2*chunk_size, 32)
-            "task":    "place_red_cube into box",
+            "task":    "place red cube into box",
         }
 
 #################################################################
