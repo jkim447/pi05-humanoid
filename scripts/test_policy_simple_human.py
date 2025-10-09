@@ -322,7 +322,7 @@ from scipy.spatial.transform import Rotation as R
 
 # === configuration ===
 root_dir = "/iris/projects/humanoid/dataset/ego_dex"   # <-- change to your dataset root
-save_dir = Path("dataset_test_images_eval")
+save_dir = Path("dataset_test_images_eval_10_08_25")
 save_dir.mkdir(exist_ok=True)
 
 # === create dataset ===

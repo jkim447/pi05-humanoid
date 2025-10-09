@@ -1,0 +1,2 @@
+[2025-10-06T19:26:10.806] error: execve(): XLA_PYTHON_CLIENT_MEM_FRACTION=0.9: No such file or directory
+srun: error: iris-hgx-1: task 0: Exited with exit code 2

@@ -8,6 +8,44 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.utils.data import DataLoader
+import numpy as np
+if not hasattr(np, "float"):
+    np.float = float
+
+from urdfpy import URDF
+
+
+# --- tiny helpers / constants for FK overlay ---
+def _pose_to_T(pos_xyz, quat_xyzw):
+    T = np.eye(4)
+    T[:3,:3] = R.from_quat(quat_xyzw).as_matrix()
+    T[:3, 3] = np.asarray(pos_xyz, dtype=np.float64)
+    return T
+
+# End-effector → hand (same as your script; tweak if needed)
+_theta_y = np.pi
+_theta_z = -np.pi/2
+_right_theta_z = np.pi
+_R_y = np.array([[ np.cos(_theta_y), 0, np.sin(_theta_y)],
+                 [ 0, 1, 0],
+                 [-np.sin(_theta_y), 0, np.cos(_theta_y)]])
+_R_z = np.array([[np.cos(_theta_z),-np.sin(_theta_z),0],
+                 [np.sin(_theta_z), np.cos(_theta_z),0],
+                 [0,0,1]])
+_R_right_z = np.array([[np.cos(_right_theta_z),-np.sin(_right_theta_z),0],
+                       [np.sin(_right_theta_z), np.cos(_right_theta_z),0],
+                       [0,0,1]])
+T_EE_TO_HAND_L = np.eye(4); T_EE_TO_HAND_L[:3,:3] = _R_y @ _R_z;       T_EE_TO_HAND_L[:3,3] = [ 0.00,-0.033, 0.00]
+T_EE_TO_HAND_R = np.eye(4); T_EE_TO_HAND_R[:3,:3] = _R_y @ _R_z @ _R_right_z; T_EE_TO_HAND_R[:3,3] = [-0.02, 0.02, 0.025]
+
+# Simple link groups to draw (right hand); prefixes in URDF are "rl_*"
+_HAND_LINK_GROUPS = {
+    "tips":     ["thumb_tip","index_tip","middle_tip","ring_tip","pinky_tip"],
+    "mids":     ["thumb_knuckle2","index_knuckle2","middle_knuckle2","ring_knuckle2","pinky_knuckle2"],
+    "knuckles": ["thumb_knuckle1","index_knuckle1","middle_knuckle1","ring_knuckle1","pinky_knuckle1"],
+}
+def _connect(seq):  # lines between consecutive links
+    return [(seq[i], seq[i+1]) for i in range(len(seq)-1)]
 
 # Intrinsics
 K_LEFT  = np.array([[730.2571411132812, 0.0, 637.2598876953125],
@@ -36,17 +74,31 @@ T_BASE_TO_CAM_RIGHT = np.linalg.inv(np.array([
 ], dtype=np.float64))
 
 class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
-    def __init__(self, dataset_dir, chunk_size, stride = 3):
+    def __init__(self, dataset_dir, chunk_size, stride = 3, overlay=False,
+        ):
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
         self.img_height = 224
         self.img_width  = 224
         self.stride = stride
+        self.overlay = overlay  # whether to overlay keypoints
+        urdf_right_path = urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf"
       
         self.right_hand_cols = [f"right_hand_{i}" for i in range(20)]
         self.right_actual_hand_cols = [f"right_actual_hand_{i}" for i in range(20)]
         self.action_camera = "left"  # which camera to use for action ref frame
+
+        # Load URDF + connections only when we actually overlay
+        if self.overlay:
+            self.robot_r = URDF.load(urdf_right_path)
+            self.right_joint_names = [j.name for j in self.robot_r.joints if j.joint_type != "fixed"]
+            # draw skeleton connections (right)
+            self.right_connections = [(j.parent, j.child) for j in self.robot_r.joints]
+            # connect fingertips -> mids -> knuckles for nicer lines
+            for g in _HAND_LINK_GROUPS.values():
+                names = [f"rl_{x}" for x in g]
+                self.right_connections.extend(_connect(names))
         
         # collect demo folders: Demo1, Demo2, ..., DemoN
         def _demo_key(name: str):
@@ -103,15 +155,67 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.index)
 
-    def load_img(self, demo_dir, start_ts, cam_name = "left"):
-        img_path = os.path.join(demo_dir, cam_name, f"{start_ts:06d}.jpg")
-        img_bgr = cv2.imread(img_path)
-        if img_bgr is None:
-            raise FileNotFoundError(f"Image not found: {img_path}")
-        img_rgb  = cv2.cvtColor(img_bgr,  cv2.COLOR_BGR2RGB)
-        img_rgb  = cv2.resize(img_rgb,  (self.img_width, self.img_height))
-        img_rgb  = img_rgb.astype(np.float32) / 255.0  # normalize to 0–1
-        return img_rgb
+    def _fk_points_right_world(self, row):
+        # EE pose -> hand pose (world)
+        T_ee  = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
+                        [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]])
+        T_hand = T_ee @ T_EE_TO_HAND_R
+        # FK with 20 joint angles
+        angles = [float(row[f"right_actual_hand_{i}"]) for i in range(20)]
+        fk = self.robot_r.link_fk(cfg=dict(zip(self.right_joint_names, angles)), use_names=True)
+        T_fkbase_inv = np.linalg.inv(fk.get("FK_base", np.eye(4)))
+        pts = {}
+        for link_name, T_link_model in fk.items():
+            if not link_name.startswith("rl_"):  # right-hand links prefixed "rl_"
+                continue
+            T_link_in_hand = T_fkbase_inv @ T_link_model
+            T_world        = T_hand @ T_link_in_hand
+            pts[link_name] = T_world[:3, 3]
+        return pts  # {link_name: (x,y,z)}
+
+    def _project_draw_right_on_left(self, img_bgr, pts_map):
+        h, w = img_bgr.shape[:2]
+        fx, fy, cx, cy = K_LEFT[0,0], K_LEFT[1,1], K_LEFT[0,2], K_LEFT[1,2]
+
+        # project
+        proj = {}
+        for name, Pw in pts_map.items():
+            Pc = T_BASE_TO_CAM_LEFT @ np.array([Pw[0], Pw[1], Pw[2], 1.0], dtype=np.float64)
+            z = Pc[2]
+            if z <= 1e-6: 
+                continue
+            u = int(fx * Pc[0] / z + cx)
+            v = int(fy * Pc[1] / z + cy)
+            if 0 <= u < w and 0 <= v < h:
+                proj[name] = (u, v, z)
+
+        # draw points
+        for name, (u, v, z) in proj.items():
+            cv2.circle(img_bgr, (u, v), 4, (0, 255, 255), 7)  # cyan for right
+
+        # draw lines (clipped to image)
+        rect = (0, 0, w, h)
+        # TODO: uncomment me for the line connections!
+        # for a, b in self.right_connections:
+        #     if a in proj and b in proj:
+        #         pt1, pt2 = proj[a][:2], proj[b][:2]
+        #         ok, p1, p2 = cv2.clipLine(rect, pt1, pt2)
+        #         if ok:
+        #             cv2.line(img_bgr, p1, p2, (200, 200, 0), 2)   # pale yellow
+        return img_bgr
+
+
+    def _load_img_raw_bgr(self, demo_dir, ts, cam_name="left"):
+        p = os.path.join(demo_dir, cam_name, f"{ts:06d}.jpg")
+        img = cv2.imread(p)
+        if img is None:
+            raise FileNotFoundError(p)
+        return img  # raw BGR uint8
+
+    def _resize_norm_rgb(self, img_bgr):
+        rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        rgb = cv2.resize(rgb, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
+        return (rgb.astype(np.float32) / 255.0)
 
     def _rot_base_to_cam(self, R_base):
         return (T_BASE_TO_CAM_LEFT[:3,:3] @ R_base).astype(np.float32)
@@ -145,11 +249,19 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         demo_dir, episode_len = self.episodes[ep_id]
 
         # image at the window start
-        image = self.load_img(demo_dir, start_ts, cam_name="left")
+        img_bgr = self._load_img_raw_bgr(demo_dir, start_ts, cam_name="left")
 
         # read episode CSV once per sample (simple & practical). For speed, add a tiny cache (below).
         csv_path = os.path.join(demo_dir, "ee_hand.csv")
         df = pd.read_csv(csv_path)
+
+        # --- overlay on RAW image (optional) ---
+        if self.overlay:
+            pts_r_world = self._fk_points_right_world(df.iloc[start_ts])
+            img_bgr = self._project_draw_right_on_left(img_bgr, pts_r_world)
+
+        # finally resize/normalize once
+        image = self._resize_norm_rgb(img_bgr)
 
         end_ts = start_ts + self.chunk_size * self.stride
         # We built index so end_ts <= episode_len
@@ -180,98 +292,45 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #################################################################
 #################################################################
 
-# def save_images(images, out_dir, idx):
-#     """Save (2,C,H,W) tensor images as jpg."""
-#     os.makedirs(out_dir, exist_ok=True)
-#     imgs = images.permute(0,2,3,1).cpu().numpy()  # -> (2,H,W,C), float [0,1]
-#     for cam_id in range(imgs.shape[0]):
-#         img = (imgs[cam_id] * 255).astype("uint8")[:, :, ::-1]  # RGB->BGR for cv2
-#         out_path = os.path.join(out_dir, f"sample{idx}_cam{cam_id}.jpg")
-#         cv2.imwrite(out_path, img)
-#         print(f"Saved {out_path}")
+import os
+import numpy as np
+import cv2
+from torch.utils.data import DataLoader
 
+# ---- import your dataset class first ----
+# from your_file import GalaxeaDatasetKeypointsJoints
 
-# # --- minimal fingertip overlay (left cam) ---
-# ORIG_W, ORIG_H = 1280, 720  # set to your raw capture size
-# Sx, Sy = 224/ORIG_W, 224/ORIG_H
-# K224 = np.array([[K_LEFT[0,0]*Sx, 0, K_LEFT[0,2]*Sx],
-#                  [0, K_LEFT[1,1]*Sy, K_LEFT[1,2]*Sy],
-#                  [0, 0, 1]], dtype=np.float32)
+def save_rgb01(path, rgb01):
+    """rgb01: (H,W,3) float32 in [0,1]"""
+    bgr_u8 = (np.clip(rgb01, 0, 1) * 255).astype(np.uint8)[:, :, ::-1]  # RGB->BGR
+    cv2.imwrite(path, bgr_u8)
 
-# # optionally use this
-# def save_with_tips_fullres(images_2chw, actions_ta, out_dir, idx):
-#     os.makedirs(out_dir, exist_ok=True)
-#     # images_2chw: (2,C,H,W), already full-res RGB in [0,1]
-#     imgs = (images_2chw.permute(0,2,3,1).cpu().numpy() * 255).astype("uint8")  # (2,H,W,C)
+if __name__ == "__main__":
+    dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 
-#     # Save both cams first
-#     for cam in range(2):
-#         out_path = os.path.join(out_dir, f"sample{idx}_cam{cam}.jpg")
-#         cv2.imwrite(out_path, imgs[cam][:,:,::-1])  # RGB->BGR
+    ds = GalaxeaDatasetKeypointsJoints(
+        dataset_dir=dataset_root,
+        chunk_size=8,
+        stride=3,
+        overlay=True,   # turn on drawing
+    )
 
-#     # Get fingertip positions from action (left cam frame, 3D)
-#     a0 = actions_ta[0].cpu().numpy()
-#     tips = a0[-15:].reshape(5,3).astype(np.float32)  # (Xc,Yc,Zc)
+    dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
 
-#     # Project with original intrinsics K_LEFT
-#     Z = np.clip(tips[:,2:3], 1e-6, None)
-#     xn = tips[:,:2] / Z                     # (x/z, y/z)
-#     uv = (K_LEFT[:2,:2] @ xn.T).T + K_LEFT[:2,2]  # (5,2) pixels in full res
+    out_dir = "/iris/projects/humanoid/openpi/robot_vis"
+    os.makedirs(out_dir, exist_ok=True)
 
-#     # Draw dots on left cam image
-#     left_path = os.path.join(out_dir, f"sample{idx}_cam0.jpg")
-#     im = cv2.imread(left_path)  # full-res BGR
-#     for u,v in uv:
-#         u,v = int(round(u)), int(round(v))
-#         if 0 <= u < im.shape[1] and 0 <= v < im.shape[0]:
-#             cv2.circle(im, (u,v), 8, (0,0,255), -1)  # red dots
-#     cv2.imwrite(os.path.join(out_dir, f"sample{idx}_cam0_with_tips.jpg"), im)
+    # grab and save first 8 samples
+    for i, batch in enumerate(dl):
+        img = batch["image"][0].numpy()          # (H,W,3) float32 [0,1]
+        state = batch["state"][0].numpy()        # (32,)
+        actions = batch["actions"][0].numpy()    # (2*chunk, 32)
+        task = batch["task"][0]
 
-# def save_with_tips(images_2chw, actions_ta, out_dir, idx):
-#     os.makedirs(out_dir, exist_ok=True)
-#     imgs = (images_2chw.permute(0,2,3,1).cpu().numpy() * 255).astype("uint8")  # (2,H,W,C) RGB
-#     # Save both cams first
-#     for cam in range(2):
-#         cv2.imwrite(os.path.join(out_dir, f"sample{idx}_cam{cam}.jpg"), imgs[cam][:,:,::-1])
+        save_rgb01(os.path.join(out_dir, f"sample_{i:02d}.png"), img)
+        print(f"saved {os.path.join(out_dir, f'sample_{i:02d}.png')}  |  state {state.shape}  actions {actions.shape}  task={task}")
 
-#     # Get first timestep action and its last 15 dims -> (5,3) cam-frame points
-#     a0 = actions_ta[0].cpu().numpy()
-#     tips = a0[-15:].reshape(5,3).astype(np.float32)  # (Xc,Yc,Zc)
-#     Z = np.clip(tips[:,2:3], 1e-6, None)
-#     xn = tips[:,:2] / Z                               # (x/z, y/z)
-#     uv = (K224[:2,:2] @ xn.T).T + K224[:2,2]          # (5,2) in 224x224
+        if i >= 7:
+            break
 
-#     # Draw on left image (cam0) and resave
-#     left_path = os.path.join(out_dir, f"sample{idx}_cam0.jpg")
-#     im = cv2.imread(left_path)                        # BGR 224x224
-#     for u,v in uv:
-#         u,v = int(round(u)), int(round(v))
-#         if 0 <= u < im.shape[1] and 0 <= v < im.shape[0]:
-#             cv2.circle(im, (u,v), 5, (255,0,255), -1)  # red dots
-#     cv2.imwrite(os.path.join(out_dir, f"sample{idx}_cam0_with_tips.jpg"), im)
-
-
-# ds = GalaxeaDatasetKeypointsJoints(
-#     dataset_dir="/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox",
-#     chunk_size=20,
-#     apply_data_aug=True,
-#     normalize=False,
-#     compute_keypoints=True,
-#     overlay_keypoints=False   # skeletons drawn before resizing
-# )
-
-# loader = DataLoader(ds, batch_size=1, shuffle=True)
-
-# out_dir = "vis_samples"
-# for i, batch in enumerate(loader):
-#     image_data, qpos, action, is_pad = batch
-#     save_images(image_data[0], out_dir, i)
-#     # save_with_tips(image_data[0], action[0], out_dir, i)
-#     save_with_tips_fullres(image_data[0], action[0], out_dir, i)
-#     print("qpos:", qpos.shape, "action:", action.shape, "is_pad:", is_pad.shape)
-#     if i >= 4:   # save first 5 samples only
-#         break
-
-# # (optional) compare with augmentation OFF
-# # ds_noaug = GalaxeaDataset(dataset_dir="/path/to/Galaxea", chunk_size=50, apply_data_aug=False, normalize=True)
-# # dump_dataset_images(ds_noaug, out_dir="viz_out", num_samples=20, prefix="orig")
+    print(f"Done. Check images in: {os.path.abspath(out_dir)}")

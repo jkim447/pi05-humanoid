@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=pi05
 #SBATCH --output=pi05-%j.out
-#SBATCH --partition=iris
+#SBATCH --partition=iris-hi
 #SBATCH --nodelist=iris-hgx-1
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:6

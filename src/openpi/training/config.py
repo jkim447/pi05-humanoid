@@ -839,7 +839,57 @@ _CONFIGS = [
         # ema_decay=0.999, # default is 0.99 if unspecified
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
-        num_train_steps=60_000, # TODO: change as needed
+        num_train_steps=120_000, # TODO: change as needed
+        batch_size=32, # TODO: change as needed
+        # lr_schedule=_optimizer.CosineDecaySchedule(),
+        # optimizer=_optimizer.AdamW(),
+        # ema_decay=0.99,
+    ),
+
+
+    # for triaining on heterogeneous (human + robot) data
+    TrainConfig(
+        # Give the experiment a unique handle.
+        name="pi05_mixed_kp",
+
+        # Full fine-tuning of the standard Pi-0 architecture.
+        # model=pi0.Pi0Config(),
+        model=pi0_config.Pi0Config(action_dim=32, pi05=True),
+
+        # Point to your Galaxea LeRobot repo and use the Galaxea-specific transforms.
+        data=EgodexDataConfig(
+            repo_id="egodex",  # ← replace with your repo if different
+            base_config=DataConfig(
+                # Load the language instruction from the `task` field as the prompt.
+                prompt_from_task=True,
+            ),
+            # TODO incorporate extra_delta_transform=True,
+        ),
+
+        # TOOD use cleaner design (e.g., use a list of datasets)
+        data2 =LeRobotGalaxeaDataConfig(
+            repo_id="galaxea",  # ← replace with your repo if different
+            base_config=DataConfig(
+                # Load the language instruction from the `task` field as the prompt.
+                prompt_from_task=True,
+            ),
+        ),
+        # Initialize from the Pi-0 base checkpoint (same as pi0_libero).
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            "gs://openpi-assets/checkpoints/pi05_base/params" # TODO: load the correct one
+        ),
+
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=1000, # TODO: change as needed
+            peak_lr=2.5e-5, # default is 2.5e-5
+            decay_steps=1_000_000, # TODO: change as needed
+            decay_lr=2.5e-5, # TODO: change as needed
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0), # default 
+        # ema_decay=0.999, # default is 0.99 if unspecified
+
+        # Training hyper-parameters – start with the same settings as pi0_libero.
+        num_train_steps=120_000, # TODO: change as needed
         batch_size=32, # TODO: change as needed
         # lr_schedule=_optimizer.CosineDecaySchedule(),
         # optimizer=_optimizer.AdamW(),

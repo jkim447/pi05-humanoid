@@ -176,4 +176,7 @@ cython_debug/
 dataset_test_images/
 dataset_test_images_eval/
 vis_demo*/
-
+vis_human_policy/
+robot_vis/
+src/openpi/training/vis_samples_simple/
+core

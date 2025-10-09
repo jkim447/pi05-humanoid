@@ -11,8 +11,8 @@ import jax.numpy as jnp
 # ---------- config you edit ----------
 ROOT_DIR   = "/iris/projects/humanoid/dataset/ego_dex"
 # Option A) set exact episode files:
-EP_H5      = "/iris/projects/humanoid/dataset/ego_dex/part3/insert_remove_bookshelf/2000.hdf5"     # or leave "" to auto-find by TASK_NAME + index
-EP_MP4     = "/iris/projects/humanoid/dataset/ego_dex/part3/insert_remove_bookshelf/2000.mp4"      # must match the h5
+EP_H5      = "/iris/projects/humanoid/dataset/ego_dex/part3/insert_remove_bookshelf/2.hdf5"     # or leave "" to auto-find by TASK_NAME + index
+EP_MP4     = "/iris/projects/humanoid/dataset/ego_dex/part3/insert_remove_bookshelf/2.mp4"      # must match the h5
 # Option B) auto-pick by task name + episode index within that task
 TASK_NAME  = "insert_remove_bookshelf"             # folder name under a part/ dir
 EP_INDEX   = 0                           # 0-based within that task
@@ -145,7 +145,8 @@ from openpi.shared import download
 def _load_policy():
     conf     = cfg.get_config("pi05_egodex")
     # change if you want a different checkpoint
-    ckpt_dir = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/35000")
+    # ckpt_dir = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/35000")
+    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed/co_training_50_demos_per_task_60k_iter/76000")
     return policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ---------- main ----------

@@ -14,7 +14,7 @@ import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
 import openpi.transforms as _transforms
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, WeightedRandomSampler
 
 
 T_co = TypeVar("T_co", covariant=True)
@@ -137,62 +137,75 @@ def create_torch_dataset(
     if repo_id == "fake":
         return FakeDataset(model_config, num_samples=1024)
 
-    # TODO: undo me (likely irrelevant now since I'm now co-training on robot and human dataset)
-    # if repo_id == "egodex":
-    #     # Lazy import to avoid hard dependency unless used
-    #     from openpi.training.egodex_dataset import EgoDexSeqDataset
-    #     egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
-    #     return EgoDexSeqDataset(
-    #         root_dir=str(egodex_root),
-    #         action_horizon=action_horizon//2,                                # use model’s horizon
-    #         image_size=getattr(data_config, "image_size", (224, 224)),
-    #         # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
-    #         state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
-    #         window_stride=getattr(data_config, "window_stride", 1),
-    #         traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
-    #         max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
-    #         rebuild_index=False,  # TODO: make sure this option is what you want!
-    #         load_images = False)   # TODO: make sure this option is what you want!
+    # TODO: set overlay options for keypoint drawing on image:
+    overlay = True
 
-    if repo_id == "galaxea":
-        # Lazy import to avoid hard dependency unless used
-        from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
+    # Lazy import to avoid hard dependency unless used
+    from openpi.training.egodex_dataset import EgoDexSeqDataset
+    egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
+    egodex_dataset = EgoDexSeqDataset(
+        root_dir=str(egodex_root),
+        action_horizon=action_horizon//2,                                # use model’s horizon
+        image_size=getattr(data_config, "image_size", (224, 224)),
+        # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
+        state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
+        window_stride=getattr(data_config, "window_stride", 1),
+        traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
+        max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
+        rebuild_index=False,  # TODO: choose correctly
+        load_images = False, # TODO: choose correctly # second TODO: set to true to start training
+        overlay = overlay)
 
-        # Prefer a field on DataConfig; otherwise fall back to env var
-        # egodex_root = getattr(data_config, "egodex_root", None) or os.getenv("EGODEX_ROOT")
-        dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
-        return GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
-                                    chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
-                                    # TODO: action horizon // 2 is important if interleaving left and right actions
+    # TODO: uncomment below!
+    # Lazy import to avoid hard dependency unless used
+    # from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
+    # dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
+    # galaxea_dataset = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
+    #                             chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
+    #                             # TODO: action horizon // 2 is important if interleaving left and right actions
 
-    if repo_id == 'egodex':
-        # Lazy import to avoid hard dependency unless used
-        from openpi.training.egodex_dataset import EgoDexSeqDataset
-        egodex_root = "/iris/projects/humanoid/dataset/ego_dex"
-        egodex_dataset = EgoDexSeqDataset(
-            root_dir=str(egodex_root),
-            action_horizon=action_horizon//2,                                # use model’s horizon
-            image_size=getattr(data_config, "image_size", (224, 224)),
-            # TODO: EGO SPLIT IS IMPORTANT, OTHERWISE CHECK STATE FORMAT!
-            state_format=getattr(data_config, "state_format", "ego_split"),     # e.g., "ego" or dataset default
-            window_stride=getattr(data_config, "window_stride", 1),
-            traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
-            max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
-            rebuild_index=False,  # TODO: choose correctly
-            load_images = True)   # TODO: choose correctly # second TODO: set to true to start training
+    # # ADD human data we've collected
+    # from openpi.training.our_human_dataset import HumanDatasetKeypointsJoints
+    # # TODO change these directories as needed
+    # dir1 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox"
+    # dir2 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox"
+    # dir3 = "/iris/projects/humanoid/hamer/keypoint_human_data_wood_inbox"
+    # custom_instruction = "place wood cube into box" # TODO double check which instruction goes with which dataset
 
-        # TODO: remove me to resume co-training
-        # return egodex_dataset
+    # ds1 = HumanDatasetKeypointsJoints(
+    #     dataset_dir=dir1,
+    #     chunk_size=action_horizon//2,
+    #     stride=1,
+    #     img_height=224,
+    #     img_width=224,
+    #     overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
+    # )
 
-        # Lazy import to avoid hard dependency unless used
-        from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
-        dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
-        galaxea_dataset = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
-                                    chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
-                                    # TODO: action horizon // 2 is important if interleaving left and right actions
+    # ds2 = HumanDatasetKeypointsJoints(
+    #     dataset_dir=dir2,
+    #     chunk_size=action_horizon//2,
+    #     stride=1,
+    #     img_height=224,
+    #     img_width=224,
+    #     overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
+    # )
 
-        # Concatenate them, #TODO: consider adding weights to balance them
-        return egodex_dataset, galaxea_dataset 
+    # ds3 = HumanDatasetKeypointsJoints(
+    #     dataset_dir=dir3,
+    #     chunk_size=action_horizon//2,
+    #     stride=1,
+    #     img_height=224,
+    #     img_width=224,
+    #     overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
+    #     custom_instruction=custom_instruction, # TODO: note I'm using custom_instruction for the wooden block
+    # )
+
+    # Concatenate them
+    # return egodex_dataset, galaxea_dataset, ds1, ds2, ds3
+
+    # TODO: delete me for training1
+    return egodex_dataset #, galaxea_dataset, ds1, ds2, ds3
+
 
 
 
@@ -348,15 +361,42 @@ def create_torch_data_loader(
         seed: The seed to use for shuffling the data.
     """
 
-    # TODO: uncomment me for co-training (10/05)
-    egodex_dataset, galaxea_dataset = create_torch_dataset(data_config, action_horizon, model_config)
+    egodex_dataset, galaxea_dataset, ds1, ds2, ds3 = create_torch_dataset(data_config, action_horizon, model_config)
     egodex_dataset = transform_dataset(egodex_dataset, data_config, skip_norm_stats=skip_norm_stats)
     galaxea_dataset = transform_dataset(galaxea_dataset, data_config2, skip_norm_stats=skip_norm_stats)
-    dataset = ConcatDataset([egodex_dataset, galaxea_dataset])
 
-    # TODO: comment me for co-training (10/05)
-    # egodex_dataset = create_torch_dataset(data_config, action_horizon, model_config)
-    # dataset = transform_dataset(egodex_dataset, data_config, skip_norm_stats=skip_norm_stats)
+    # NOTE and WARNING: I'm using the same data_config as the egodex dataset for now, this might cause issues, be vigilant.
+    ds1 = transform_dataset(ds1, data_config, skip_norm_stats=skip_norm_stats)
+    ds2 = transform_dataset(ds2, data_config, skip_norm_stats=skip_norm_stats)
+    ds3 = transform_dataset(ds3, data_config, skip_norm_stats=skip_norm_stats)
+    print("I've loaded and transformed all datasets!")
+
+    # 1) pick target mix; must sum to 1
+    # TOO
+    target_p = {
+        "egodex": 0.75,
+        "galaxea": 0.13,
+        "ds1":     0.04,
+        "ds2":     0.04,
+        "ds3":     0.04,
+    }
+
+    lengths = [len(egodex_dataset), len(galaxea_dataset), len(ds1), len(ds2), len(ds3)]
+    pks     = [target_p["egodex"],   target_p["galaxea"],  target_p["ds1"], target_p["ds2"], target_p["ds3"]]
+
+    # 2) per-sample weights: w_k ∝ p_k / n_k
+    w = []
+    for n_k, p_k in zip(lengths, pks):
+        w_k = (p_k / max(1, n_k))
+        w.extend([w_k] * n_k)
+
+    weights = torch.as_tensor(np.array(w, dtype=np.float64))
+
+    # 3) choose an "epoch" length (how many draws per epoch)
+    epoch_samples = sum(lengths)  # or any value you like
+
+    dataset = ConcatDataset([egodex_dataset, galaxea_dataset, ds1, ds2, ds3])
+    # dataset = ConcatDataset([egodex_dataset, galaxea_dataset])
 
     if not skip_norm_stats:
         print("We are normalizing the data")
@@ -382,12 +422,20 @@ def create_torch_data_loader(
     else:
         local_batch_size = batch_size // jax.process_count()
 
+    # TODO: we are overwriting the sampler above, need to fix this
+    sampler = WeightedRandomSampler(
+        weights=weights,
+        num_samples=epoch_samples,  # controls epoch length
+        replacement=True,           # enables true sampling by weights
+    )
+
     logging.info(f"local_batch_size: {local_batch_size}")
     data_loader = TorchDataLoader(
         dataset,
         local_batch_size=local_batch_size,
         sharding=None if framework == "pytorch" else sharding,
-        shuffle=(sampler is None and shuffle),  # Don't shuffle if using sampler
+        # TODO: make shuffle false once using sampler
+        shuffle=False, # (sampler is None and shuffle),  # Don't shuffle if using sampler
         sampler=sampler,
         num_batches=num_batches,
         num_workers=num_workers,

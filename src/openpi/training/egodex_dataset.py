@@ -11,6 +11,24 @@ import json
 from dataclasses import asdict, dataclass
 import random
 
+LEFT_MANO_21 = [
+    # "leftHand",
+    "leftThumbKnuckle","leftThumbIntermediateBase","leftThumbIntermediateTip","leftThumbTip",
+    "leftIndexFingerKnuckle","leftIndexFingerIntermediateBase","leftIndexFingerIntermediateTip","leftIndexFingerTip",
+    "leftMiddleFingerKnuckle","leftMiddleFingerIntermediateBase","leftMiddleFingerIntermediateTip","leftMiddleFingerTip",
+    "leftRingFingerKnuckle","leftRingFingerIntermediateBase","leftRingFingerIntermediateTip","leftRingFingerTip",
+    "leftLittleFingerKnuckle","leftLittleFingerIntermediateBase","leftLittleFingerIntermediateTip","leftLittleFingerTip",
+]
+
+RIGHT_MANO_21 = [
+    # "rightHand",
+    "rightThumbKnuckle","rightThumbIntermediateBase","rightThumbIntermediateTip","rightThumbTip",
+    "rightIndexFingerKnuckle","rightIndexFingerIntermediateBase","rightIndexFingerIntermediateTip","rightIndexFingerTip",
+    "rightMiddleFingerKnuckle","rightMiddleFingerIntermediateBase","rightMiddleFingerIntermediateTip","rightMiddleFingerTip",
+    "rightRingFingerKnuckle","rightRingFingerIntermediateBase","rightRingFingerIntermediateTip","rightRingFingerTip",
+    "rightLittleFingerKnuckle","rightLittleFingerIntermediateBase","rightLittleFingerIntermediateTip","rightLittleFingerTip",
+]
+
 # ---------- small SE(3) helpers ----------
 def _inv(T: np.ndarray) -> np.ndarray:
     Rm = T[:3, :3]
@@ -85,6 +103,7 @@ class EgoDexSeqDataset(Dataset):
         max_episodes: Optional[int] = None,     # optional global cap
         rebuild_index: bool = False,   # <— NEW
         load_images: bool = True,
+        overlay: bool = False,    
     ):
         assert action_horizon >= 1
         self.root_dir = root_dir
@@ -93,6 +112,7 @@ class EgoDexSeqDataset(Dataset):
         self.H = int(action_horizon)
         self.stride = max(1, int(window_stride))
         self.load_images = load_images
+        self.overlay = overlay
 
         self.wrists = ["leftHand", "rightHand"]
         self.fingertips = [
@@ -108,7 +128,7 @@ class EgoDexSeqDataset(Dataset):
 
             # ---- pick a fixed number of episodes per task ----
             # TODO: change as needed (ideally delete for training)
-            episodes_per_task = 50        # <= choose how many per task
+            episodes_per_task = 10        # <= choose how many per task
             rng = random.Random(42)      # <= set seed for reproducibility (or remove)
 
             def _task_name(ep: Episode) -> str:
@@ -197,6 +217,40 @@ class EgoDexSeqDataset(Dataset):
     def __len__(self) -> int:
         return len(self.index)
 
+    def _project_pts_onto_resized(self, pts_cam_xyz: np.ndarray, K: np.ndarray, W: int, H: int) -> np.ndarray:
+        """pts_cam_xyz: (M,3) in camera frame; returns integer pixel coords on resized frame."""
+        # Intrinsics are for 1920x1080 per README; scale to resized (W,H)
+        W0, H0 = 1920.0, 1080.0
+        sx, sy = W / W0, H / H0
+        fx, fy, cx, cy = K[0,0], K[1,1], K[0,2], K[1,2]
+
+        uv = []
+        for x, y, z in pts_cam_xyz:
+            if z <= 1e-6:        # behind camera or invalid
+                uv.append(None)
+                continue
+            u = (fx * x / z) + cx
+            v = (fy * y / z) + cy
+            u_r = int(round(u * sx))
+            v_r = int(round(v * sy))
+            uv.append((u_r, v_r))
+        return uv
+
+    def _draw_keypoints(self, image_rgb_float: np.ndarray, uv: list[tuple[int,int] | None]) -> np.ndarray:
+        """Draw filled yellow circles on a copy and return float RGB [0,1]."""
+        H, W, _ = image_rgb_float.shape
+        img = (image_rgb_float * 255.0).astype(np.uint8)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)   # OpenCV draws in BGR
+        color_yellow = (0, 255, 255)                  # BGR
+        for p in uv:
+            if p is None: 
+                continue
+            u, v = p
+            if 0 <= u < W and 0 <= v < H:
+                cv2.circle(img, (u, v), radius=9, color=color_yellow, thickness=-1)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img.astype(np.float32) / 255.0
+
     # ---- state builders ----
     def _state_pi0(self, f: h5py.File, t: int) -> np.ndarray:
         T_world_cam = f["transforms"]["camera"][t]
@@ -235,31 +289,22 @@ class EgoDexSeqDataset(Dataset):
         return self._state_ego(f, t) if self.state_format in ("ego", "ego_split") else self._state_pi0(f, t)
 
     # ---- IO helpers ----
-    def _read_rgb(self, mp4_path: str, t: int) -> np.ndarray: 
-        H, W = self.image_size
-
-        def _blank() -> np.ndarray:
-            return np.zeros((H, W, 3), dtype=np.float32)
-
-        # Try a few times (helps with flaky decoders)
-        for attempt in range(3):
-            cap = cv2.VideoCapture(mp4_path)
-            if not cap.isOpened():
-                cap.release()
-                continue
-
-            cap.set(cv2.CAP_PROP_POS_FRAMES, int(t))
-            ok, frame_bgr = cap.read()
+    def _read_rgb(self, mp4_path: str, t: int) -> np.ndarray:
+        cap = cv2.VideoCapture(mp4_path)
+        if not cap.isOpened():
             cap.release()
+            return np.zeros((1080, 1920, 3), dtype=np.float32)  # fallback at typical native size
 
-            if ok and frame_bgr is not None:
-                rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                rgb = cv2.resize(rgb, (W, H), interpolation=cv2.INTER_AREA)
-                return rgb.astype(np.float32) / 255.0
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(t))
+        ok, frame_bgr = cap.read()
+        cap.release()
 
-        # Fallback: use blank image if all attempts fail
-        print(f"[WARN] Failed to read frame {t} from {mp4_path}. Using blank image.")
-        return _blank()
+        if not ok or frame_bgr is None:
+            return np.zeros((1080, 1920, 3), dtype=np.float32)
+
+        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        return rgb.astype(np.float32) / 255.0     # return native resolution, no resizing
+
 
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:
@@ -276,18 +321,47 @@ class EgoDexSeqDataset(Dataset):
 
         with h5py.File(h5_path, "r") as f:
 
+            # for name in f["transforms"].keys():
+            #     print("  ", name)
+
+            # assert False
+
+            # ----- optional keypoint overlay (simple & clear) -----
+            if self.load_images and self.overlay:
+                K = np.array([[736.6339, 0., 960.],
+                            [0., 736.6339, 540.],
+                            [0., 0., 1.]], dtype=np.float64)
+
+                T_world_cam = f["transforms"]["camera"][t0]
+
+                # keep only names that exist in this file (robust)
+                names = [n for n in (LEFT_MANO_21 + RIGHT_MANO_21) if n in f["transforms"]]
+
+                pts_cam = []
+                for n in names:
+                    T_w = f["transforms"][n][t0]
+                    T_c = _pose_world_to_cam(T_w, T_world_cam)
+                    pts_cam.append(T_c[:3, 3])
+                pts_cam = np.asarray(pts_cam, dtype=np.float64)
+
+                # project in RAW size, draw, then resize once
+                H0, W0 = image.shape[:2]
+                uv = self._project_pts_onto_resized(pts_cam, K, W0, H0)
+                image = self._draw_keypoints(image, uv)
+
+
             if self.state_format == "ego_split":
                 actions = np.stack([self._state_vec(f, t0 + dt) for dt in range(self.H)], axis=0)  # (H, D)
                 D = actions.shape[1]
                 if D != 48:
                     raise ValueError(f"ego_split expects 48-D state before split, got {D}")
 
-                # split into two 24-D tokens
-                first_half  = actions[:, :24]
-                second_half = actions[:, 24:]
+                # Hard-coded split for ego_split -- TODO: corret me for the correct version
+                left_arm  = np.concatenate([actions[:, 0:9],  actions[:, 18:33]], axis=1)   # left wrist + left fingers
+                right_arm = np.concatenate([actions[:, 9:18], actions[:, 33:48]], axis=1)   # right wrist + right fingers
                 actions_split = np.empty((actions.shape[0] * 2, 24), dtype=np.float32)
-                actions_split[0::2] = first_half
-                actions_split[1::2] = second_half
+                actions_split[0::2] = left_arm
+                actions_split[1::2] = right_arm
 
                 # pad each token to 32-D
                 actions_out = np.zeros((actions_split.shape[0], 32), dtype=np.float32) # (H, 32)
@@ -303,6 +377,10 @@ class EgoDexSeqDataset(Dataset):
 
         # task = folder name (parent directory of the file)
         task = os.path.basename(os.path.dirname(h5_path))
+
+        # final resize to self.image_size
+        out_h, out_w = self.image_size
+        image = cv2.resize(image, (out_w, out_h), interpolation=cv2.INTER_AREA).astype(np.float32)
 
         return {
             "image":   image,          # uint8, (H,W,3)
@@ -325,7 +403,7 @@ class EgoDexSeqDataset(Dataset):
 
 # # === configuration ===
 # root_dir = "/iris/projects/humanoid/dataset/ego_dex"   # <-- change to your dataset root
-# save_dir = Path("dataset_test_images")
+# save_dir = Path("/iris/projects/humanoid/openpi/dataset_test_images")
 # save_dir.mkdir(exist_ok=True)
 
 # # === create dataset ===
@@ -335,7 +413,8 @@ class EgoDexSeqDataset(Dataset):
 #     image_size=(224, 224),
 #     state_format="ego",      # or "ego"
 #     window_stride=1,
-#     traj_per_task = 1
+#     traj_per_task = 1,
+#     overlay=True
 # )
 
 # print(f"Dataset length: {len(ds)} samples")

@@ -94,8 +94,8 @@ def _in_bounds(p, w, h):
     return (p[:, 0] >= 0) & (p[:, 0] < w) & (p[:, 1] >= 0) & (p[:, 1] < h)
 
 # ──────────────────── load policy & warm up ─────────────────────
-conf      = cfg.get_config("pi05_galaxea")
-ckpt_dir  = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/27000")
+conf      = cfg.get_config("pi05_mixed")
+ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed/co_training_50_demos_per_task_60k_iter/76000")
 policy    = policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ───────────────────────── episode loop ─────────────────────────
