@@ -1,0 +1,735 @@
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+21:54:04.387 [I] Running on: iris-hgx-2.stanford.edu                                              (1835763:train.py:219)
+INFO:2025-10-09 21:54:07,237:jax._src.xla_bridge:925: Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
+21:54:07.237 [I] Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig' (1835763:xla_bridge.py:925)
+INFO:2025-10-09 21:54:07,247:jax._src.xla_bridge:925: Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory
+21:54:07.247 [I] Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory (1835763:xla_bridge.py:925)
+21:54:10.073 [I] Created BasePyTreeCheckpointHandler: use_ocdbt=True, use_zarr3=False, pytree_metadata_options=PyTreeMetadataOptions(support_rich_types=False), array_metadata_store=<orbax.checkpoint._src.metadata.array_metadata_store.Store object at 0x14bccb1fa910> (1835763:base_pytree_checkpoint_handler.py:334)
+21:54:10.073 [I] Created BasePyTreeCheckpointHandler: use_ocdbt=True, use_zarr3=False, pytree_metadata_options=PyTreeMetadataOptions(support_rich_types=False), array_metadata_store=<orbax.checkpoint._src.metadata.array_metadata_store.Store object at 0x14bccb1fa910> (1835763:base_pytree_checkpoint_handler.py:334)
+21:54:10.074 [I] [thread=MainThread] Failed to get flag value for EXPERIMENTAL_ORBAX_USE_DISTRIBUTED_PROCESS_ID. (1835763:multihost.py:390)
+21:54:10.075 [I] [process=0][thread=MainThread] CheckpointManager init: checkpointers=None, item_names=None, item_handlers={'assets': <openpi.training.checkpoints.CallbackHandler object at 0x14bb528f4210>, 'train_state': <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb5288a450>, 'params': <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb52769dd0>}, handler_registry=None (1835763:checkpoint_manager.py:620)
+21:54:10.075 [I] Deferred registration for item: "assets". Adding handler `<openpi.training.checkpoints.CallbackHandler object at 0x14bb528f4210>` for item "assets" and save args `<class 'openpi.training.checkpoints.CallbackSave'>` and restore args `<class 'openpi.training.checkpoints.CallbackRestore'>` to `_handler_registry`. (1835763:composite_checkpoint_handler.py:234)
+21:54:10.076 [I] Deferred registration for item: "train_state". Adding handler `<orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb5288a450>` for item "train_state" and save args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>` and restore args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>` to `_handler_registry`. (1835763:composite_checkpoint_handler.py:234)
+21:54:10.076 [I] Deferred registration for item: "params". Adding handler `<orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb52769dd0>` for item "params" and save args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>` and restore args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>` to `_handler_registry`. (1835763:composite_checkpoint_handler.py:234)
+21:54:10.076 [I] Deferred registration for item: "metrics". Adding handler `<orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonCheckpointHandler object at 0x14bb52610110>` for item "metrics" and save args `<class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonSaveArgs'>` and restore args `<class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonRestoreArgs'>` to `_handler_registry`. (1835763:composite_checkpoint_handler.py:234)
+21:54:10.076 [I] Initialized registry DefaultCheckpointHandlerRegistry({('assets', <class 'openpi.training.checkpoints.CallbackSave'>): <openpi.training.checkpoints.CallbackHandler object at 0x14bb528f4210>, ('assets', <class 'openpi.training.checkpoints.CallbackRestore'>): <openpi.training.checkpoints.CallbackHandler object at 0x14bb528f4210>, ('train_state', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb5288a450>, ('train_state', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb5288a450>, ('params', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb52769dd0>, ('params', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x14bb52769dd0>, ('metrics', <class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonSaveArgs'>): <orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonCheckpointHandler object at 0x14bb52610110>, ('metrics', <class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonRestoreArgs'>): <orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonCheckpointHandler object at 0x14bb52610110>}). (1835763:composite_checkpoint_handler.py:502)
+21:54:10.076 [I] orbax-checkpoint version: 0.11.13                                                (1835763:abstract_checkpointer.py:35)
+21:54:10.076 [I] [process=0][thread=MainThread] Using barrier_sync_fn: <function get_barrier_sync_fn.<locals>.<lambda> at 0x14bb40097600> timeout: 7200 secs and primary_host=0 for async checkpoint writes (1835763:async_checkpointer.py:170)
+21:54:10.096 [I] Read Metadata={'item_handlers': {'assets': 'openpi.training.checkpoints.CallbackHandler', 'params': 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler', 'train_state': 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler'}, 'metrics': {}, 'performance_metrics': {}, 'init_timestamp_nsecs': 1760029475162240910, 'commit_timestamp_nsecs': 1760029549497679589, 'custom_metadata': {}} from /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/5000/_CHECKPOINT_METADATA (1835763:checkpoint.py:226)
+21:54:10.113 [W] Missing metrics for step 15000                                                   (1835763:checkpoint_manager.py:1654)
+21:54:10.115 [W] Missing metrics for step 5000                                                    (1835763:checkpoint_manager.py:1654)
+21:54:10.115 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/15000/metrics/metrics not found. (1835763:checkpoint_manager.py:1655)
+21:54:10.115 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/5000/metrics/metrics not found. (1835763:checkpoint_manager.py:1655)
+21:54:10.116 [W] Missing metrics for step 17000                                                   (1835763:checkpoint_manager.py:1654)
+21:54:10.116 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/17000/metrics/metrics not found. (1835763:checkpoint_manager.py:1655)
+21:54:10.121 [W] Missing metrics for step 10000                                                   (1835763:checkpoint_manager.py:1654)
+21:54:10.121 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/10000/metrics/metrics not found. (1835763:checkpoint_manager.py:1655)
+21:54:10.121 [I] Found 4 checkpoint steps in /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp (1835763:checkpoint_manager.py:1701)
+21:54:10.122 [I] [process=0][thread=MainThread] CheckpointManager created,  primary_host=0, CheckpointManagerOptions=CheckpointManagerOptions(save_interval_steps=1, max_to_keep=1, keep_time_interval=None, keep_period=5000, should_keep_fn=None, best_fn=None, best_mode='max', keep_checkpoints_without_metrics=True, step_prefix=None, step_format_fixed_length=None, step_name_format=None, create=False, cleanup_tmp_directories=False, save_on_steps=frozenset(), single_host_load_and_broadcast=False, todelete_subdir=None, enable_background_delete=False, read_only=False, enable_async_checkpointing=True, async_options=AsyncOptions(timeout_secs=7200, barrier_sync_fn=None, post_finalization_callback=None, create_directories_asynchronously=True), multiprocessing_options=MultiprocessingOptions(primary_host=0, active_processes=None, barrier_sync_key_prefix=None), should_save_fn=None, file_options=FileOptions(path_permission_mode=None), save_root_metadata=True, temporary_path_class=None, save_decision_policy=None, prevent_write_metrics=False), root_directory=/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp: <orbax.checkpoint.checkpoint_manager.CheckpointManager object at 0x14bb529e4d50> (1835763:checkpoint_manager.py:801)
+wandb: Currently logged in as: jkim2718 (tmp_) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.11
+wandb: Run data is saved locally in /iris/projects/humanoid/openpi/wandb/run-20251009_215410-w745ubb9
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Resuming run co_training_kp
+wandb: ⭐️ View project at https://wandb.ai/tmp_/openpi
+wandb: 🚀 View run at https://wandb.ai/tmp_/openpi/runs/w745ubb9
+21:54:14.036 [I] Loaded norm stats from /iris/projects/humanoid/openpi/assets/pi05_mixed_kp/egodex (1835763:config.py:196)
+21:54:14.144 [I] Loaded norm stats from /iris/projects/humanoid/openpi/assets/pi05_mixed_kp/galaxea (1835763:config.py:196)
+21:54:14.147 [I] data_config: DataConfig(repo_id='egodex', asset_id='egodex', norm_stats={'state': NormStats(mean=array([-0.06352157,  0.14227782,  0.26881284,  0.45910421, -0.46645457,
+        0.53958315,  0.54299891,  0.56824952,  0.07262427,  0.03382738,
+        0.11007239,  0.31023157,  0.0362317 ,  0.09819902,  0.3401463 ,
+        0.03087626,  0.10652699,  0.34842902,  0.01864991,  0.11494368,
+        0.35399306, -0.00058273,  0.12304314,  0.3555111 ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ]), std=array([0.07190879, 0.10670202, 0.08256222, 0.29230917, 0.31026933,
+       0.31429699, 0.34765774, 0.33940205, 0.37538123, 0.08377123,
+       0.12210529, 0.11360677, 0.09180626, 0.1306383 , 0.11922993,
+       0.09474635, 0.12915812, 0.11990201, 0.09582409, 0.12804642,
+       0.11763563, 0.09487739, 0.12646796, 0.11217478, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ]), q01=array([-0.27034635, -0.07647864,  0.03055606, -0.33838078, -0.94783741,
+       -0.57528457, -0.44296975, -0.41523846, -0.94008418, -0.21582002,
+       -0.1176015 , -0.05976527, -0.23113335, -0.12937861, -0.07554106,
+       -0.24252958, -0.1235436 , -0.04075389, -0.25843105, -0.11811677,
+       -0.03189126, -0.27353196, -0.11022416, -0.02136359,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ]), q99=array([0.13867276, 0.50470338, 0.41339865, 0.98431844, 0.46279904,
+       0.95772349, 0.99254985, 0.99761957, 0.79665535, 0.25119491,
+       0.51550516, 0.50615946, 0.26562098, 0.55508075, 0.54399444,
+       0.25611439, 0.57716543, 0.55521671, 0.24894364, 0.58905364,
+       0.55396963, 0.22701829, 0.59530617, 0.54274013, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ])), 'actions': NormStats(mean=array([ 1.34488389e-01, -2.59952918e-02, -7.16139190e-03, -1.25565633e-01,
+        5.38062096e-01, -5.72433770e-01,  3.66573781e-02, -5.17637730e-01,
+       -1.78506628e-01,  4.81618643e-02, -3.38251740e-02,  7.11444113e-03,
+        5.00352383e-02, -3.37209441e-02,  1.94738130e-03,  5.62238172e-02,
+       -3.18916366e-02, -3.50678951e-04,  6.85387403e-02, -3.07752751e-02,
+       -1.86630758e-03,  8.62058178e-02, -3.07863262e-02, -3.27611575e-03,
+        0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+        0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00]), std=array([0.15321214, 0.08699047, 0.06156299, 0.31650251, 0.61812776,
+       0.65788645, 0.33277258, 0.64753735, 0.41942361, 0.1017795 ,
+       0.10443205, 0.08440314, 0.10877599, 0.11105206, 0.08926608,
+       0.11413808, 0.10899913, 0.08921903, 0.12159168, 0.10656328,
+       0.08624493, 0.13174999, 0.10411748, 0.08155642, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ]), q01=array([-0.06119754, -0.37902792, -0.18278457, -1.11198498, -0.29022322,
+       -1.82126504, -0.82518657, -1.84812165, -1.31448051, -0.13242609,
+       -0.47274741, -0.21318378, -0.14814817, -0.49318858, -0.22772175,
+       -0.14227464, -0.47702141, -0.23286197, -0.1293131 , -0.47197254,
+       -0.22961695, -0.10865846, -0.46675156, -0.22081739,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ]), q99=array([0.54428882, 0.15796359, 0.19863284, 0.60229777, 1.76254622,
+       0.32061496, 1.13273371, 0.48516809, 0.81388001, 0.42989835,
+       0.15756767, 0.3299699 , 0.45798016, 0.17149756, 0.34318458,
+       0.47622021, 0.17220992, 0.34137696, 0.50346487, 0.17173861,
+       0.33246984, 0.53385237, 0.16726751, 0.3107401 , 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'image': 'image', 'state': 'state', 'actions': 'actions', 'prompt': 'task'})], outputs=()), data_transforms=Group(inputs=(GalaxeaInputs(action_dim=32, model_type=<ModelType.PI05: 'pi05'>), DeltaActions(mask=(True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)), GalaxeaOutputs(action_dim=32))), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt=None), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x14b8f4190750>, discrete_state_input=True), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=True, action_sequence_keys=('actions',), prompt_from_task=True, rlds_data_dir=None, action_space=None, filter_dict_path=None) (1835763:data_loader.py:303)
+21:55:07.647 [I] local_batch_size: 256                                                            (1835763:data_loader.py:432)
+successfully loaded cached index: 168152 episodes
+going thru: 0
+going thru: 1
+going thru: 2
+going thru: 3
+going thru: 4
+going thru: 5
+going thru: 6
+going thru: 7
+going thru: 8
+going thru: 9
+going thru: 10
+going thru: 11
+going thru: 12
+going thru: 13
+going thru: 14
+going thru: 15
+going thru: 16
+going thru: 17
+going thru: 18
+going thru: 19
+going thru: 20
+going thru: 21
+going thru: 22
+going thru: 23
+going thru: 24
+going thru: 25
+going thru: 26
+going thru: 27
+going thru: 28
+going thru: 29
+going thru: 30
+going thru: 31
+going thru: 32
+going thru: 33
+going thru: 34
+going thru: 35
+going thru: 36
+going thru: 37
+going thru: 38
+going thru: 39
+going thru: 40
+going thru: 41
+going thru: 42
+going thru: 43
+going thru: 44
+going thru: 45
+going thru: 46
+going thru: 47
+going thru: 48
+going thru: 49
+going thru: 50
+going thru: 51
+going thru: 52
+going thru: 53
+going thru: 54
+going thru: 55
+going thru: 56
+going thru: 57
+going thru: 58
+going thru: 59
+going thru: 60
+I've loaded and transformed all datasets!
+We are normalizing the data
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+22:00:17.192 [I] Initialized data loader:
+[0].images['base_0_rgb']: (256, 224, 224, 3)@float32
+[0].images['left_wrist_0_rgb']: (256, 224, 224, 3)@float32
+[0].images['right_wrist_0_rgb']: (256, 224, 224, 3)@float32
+[0].image_masks['base_0_rgb']: (256,)@bool
+[0].image_masks['left_wrist_0_rgb']: (256,)@bool
+[0].image_masks['right_wrist_0_rgb']: (256,)@bool
+[0].state: (256, 32)@float32
+[0].tokenized_prompt: (256, 200)@int32
+[0].tokenized_prompt_mask: (256, 200)@bool
+[1]: (256, 50, 32)@float32 (1835763:train.py:245)
+22:00:23.725 [I] Initialized train state:
+['PaliGemma']['img']['Transformer']['encoder_norm']['bias'].value: (1152,)@float32
+['PaliGemma']['img']['Transformer']['encoder_norm']['scale'].value: (1152,)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['LayerNorm_0']['bias'].value: (27, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['LayerNorm_0']['scale'].value: (27, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['LayerNorm_1']['bias'].value: (27, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['LayerNorm_1']['scale'].value: (27, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MlpBlock_0']['Dense_0']['bias'].value: (27, 4304)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MlpBlock_0']['Dense_0']['kernel'].value: (27, 1152, 4304)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MlpBlock_0']['Dense_1']['bias'].value: (27, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MlpBlock_0']['Dense_1']['kernel'].value: (27, 4304, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['key']['bias'].value: (27, 16, 72)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['key']['kernel'].value: (27, 1152, 16, 72)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['out']['bias'].value: (27, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['out']['kernel'].value: (27, 16, 72, 1152)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['query']['bias'].value: (27, 16, 72)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['query']['kernel'].value: (27, 1152, 16, 72)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['value']['bias'].value: (27, 16, 72)@float32
+['PaliGemma']['img']['Transformer']['encoderblock']['MultiHeadDotProductAttention_0']['value']['kernel'].value: (27, 1152, 16, 72)@float32
+['PaliGemma']['img']['embedding']['bias'].value: (1152,)@float32
+['PaliGemma']['img']['embedding']['kernel'].value: (14, 14, 3, 1152)@float32
+['PaliGemma']['img']['head']['bias'].value: (2048,)@float32
+['PaliGemma']['img']['head']['kernel'].value: (1152, 2048)@float32
+['PaliGemma']['img']['pos_embedding'].value: (1, 256, 1152)@float32
+['PaliGemma']['llm']['embedder']['input_embedding'].value: (257152, 2048)@float32
+['PaliGemma']['llm']['final_norm']['scale'].value: (2048,)@float32
+['PaliGemma']['llm']['final_norm_1']['Dense_0']['bias'].value: (3072,)@float32
+['PaliGemma']['llm']['final_norm_1']['Dense_0']['kernel'].value: (1024, 3072)@float32
+['PaliGemma']['llm']['layers']['attn']['attn_vec_einsum']['w'].value: (18, 8, 256, 2048)@float32
+['PaliGemma']['llm']['layers']['attn']['attn_vec_einsum_1']['w'].value: (18, 8, 256, 1024)@float32
+['PaliGemma']['llm']['layers']['attn']['kv_einsum']['w'].value: (18, 2, 1, 2048, 256)@float32
+['PaliGemma']['llm']['layers']['attn']['kv_einsum_1']['w'].value: (18, 2, 1, 1024, 256)@float32
+['PaliGemma']['llm']['layers']['attn']['q_einsum']['w'].value: (18, 8, 2048, 256)@float32
+['PaliGemma']['llm']['layers']['attn']['q_einsum_1']['w'].value: (18, 8, 1024, 256)@float32
+['PaliGemma']['llm']['layers']['mlp']['gating_einsum'].value: (18, 2, 2048, 16384)@float32
+['PaliGemma']['llm']['layers']['mlp']['linear'].value: (18, 16384, 2048)@float32
+['PaliGemma']['llm']['layers']['mlp_1']['gating_einsum'].value: (18, 2, 1024, 4096)@float32
+['PaliGemma']['llm']['layers']['mlp_1']['linear'].value: (18, 4096, 1024)@float32
+['PaliGemma']['llm']['layers']['pre_attention_norm']['scale'].value: (18, 2048)@float32
+['PaliGemma']['llm']['layers']['pre_attention_norm_1']['Dense_0']['bias'].value: (18, 3072)@float32
+['PaliGemma']['llm']['layers']['pre_attention_norm_1']['Dense_0']['kernel'].value: (18, 1024, 3072)@float32
+['PaliGemma']['llm']['layers']['pre_ffw_norm']['scale'].value: (18, 2048)@float32
+['PaliGemma']['llm']['layers']['pre_ffw_norm_1']['Dense_0']['bias'].value: (18, 3072)@float32
+['PaliGemma']['llm']['layers']['pre_ffw_norm_1']['Dense_0']['kernel'].value: (18, 1024, 3072)@float32
+['action_in_proj']['bias'].value: (1024,)@float32
+['action_in_proj']['kernel'].value: (32, 1024)@float32
+['action_out_proj']['bias'].value: (32,)@float32
+['action_out_proj']['kernel'].value: (1024, 32)@float32
+['time_mlp_in']['bias'].value: (1024,)@float32
+['time_mlp_in']['kernel'].value: (1024, 1024)@float32
+['time_mlp_out']['bias'].value: (1024,)@float32
+['time_mlp_out']['kernel'].value: (1024, 1024)@float32 (1835763:train.py:255)
+22:00:23.740 [I] Restoring checkpoint from /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/17000. (1835763:checkpointer.py:298)
+/iris/projects/humanoid/openpi/.venv/lib/python3.11/site-packages/orbax/checkpoint/_src/serialization/type_handlers.py:1251: UserWarning: Sharding info not provided when restoring. Populating sharding info from sharding file. Please note restoration time will be slightly increased due to reading from file. Note also that this option is unsafe when restoring on a different topology than the checkpoint was saved with.
+  warnings.warn(
+wandb: WARNING Tried to log to step 0 that is less than the current step 17101. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+22:00:52.616 [I] [process=0] /jax/checkpoint/read/bytes_per_sec: 1.7 GiB/s (total bytes: 50.0 GiB) (time elapsed: 28 seconds) (per-host) (1835763:base_pytree_checkpoint_handler.py:114)
+22:01:47.651 [I] [process=0] /jax/checkpoint/read/bytes_per_sec: 2.7 GiB/s (total bytes: 149.9 GiB) (time elapsed: 55 seconds) (per-host) (1835763:base_pytree_checkpoint_handler.py:114)
+22:01:47.655 [I] Finished restoring checkpoint in 83.91 seconds from /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/17000. (1835763:checkpointer.py:309)
+22:01:47.655 [I] {'step': 17000, 'event_type': 'restore', 'directory': '/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp', 'checkpointer_start_time': 1760072423.7402875, 'checkpointer_duration_secs': 83.91538143157959, 'checkpoint_manager_start_time': 1760072423.7368436, 'checkpoint_manager_duration_secs': 83.91883945465088} (1835763:standard_logger.py:34)
+22:01:49.293 [I] Progress on: 17.0kit/200kit rate:- remaining:? elapsed:00:00 postfix:-           (1835763:tqdm_logging.py:145)
+2025-10-09 22:01:58.450048: E external/xla/xla/service/slow_operation_alarm.cc:73] Constant folding an instruction is taking > 1s:
+
+  %reduce-window.15 = s32[256,1018]{1,0} reduce-window(%broadcast.5936, %constant.3411), window={size=1x1018 pad=0_0x1017_0}, to_apply=%region_45.13278, metadata={op_name="jit(<unnamed wrapped function>)/jit(main)/jvp(jit(cumsum))/reduce_window_sum" source_file="/iris/projects/humanoid/openpi/src/openpi/models/pi0.py" source_line=41}
+
+This isn't necessarily a bug; constant-folding is inherently a trade-off between compilation time and speed at runtime. XLA has some guards that attempt to keep constant folding from taking too long, but fundamentally you'll always be able to come up with an input program that takes a long time.
+
+If you'd like to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+2025-10-09 22:02:12.630161: E external/xla/xla/service/slow_operation_alarm.cc:140] The operation took 15.180032948s
+Constant folding an instruction is taking > 1s:
+
+  %reduce-window.15 = s32[256,1018]{1,0} reduce-window(%broadcast.5936, %constant.3411), window={size=1x1018 pad=0_0x1017_0}, to_apply=%region_45.13278, metadata={op_name="jit(<unnamed wrapped function>)/jit(main)/jvp(jit(cumsum))/reduce_window_sum" source_file="/iris/projects/humanoid/openpi/src/openpi/models/pi0.py" source_line=41}
+
+This isn't necessarily a bug; constant-folding is inherently a trade-off between compilation time and speed at runtime. XLA has some guards that attempt to keep constant folding from taking too long, but fundamentally you'll always be able to come up with an input program that takes a long time.
+
+If you'd like to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+2025-10-09 22:02:28.374306: W external/xla/xla/hlo/transforms/simplifiers/hlo_rematerialization.cc:3021] Can't reduce memory use below 71.98GiB (77289096867 bytes) by rematerialization; only reduced to 80.64GiB (86591336692 bytes), down from 81.72GiB (87741713412 bytes) originally
+22:02:56.084 [I] Progress on: 17.0kit/200kit rate:66.8s/it remaining:3395:08:00 elapsed:01:06 postfix:- (1835763:tqdm_logging.py:145)
+22:03:06.407 [I] Progress on: 17.0kit/200kit rate:8.2s/it remaining:414:20:46 elapsed:01:17 postfix:- (1835763:tqdm_logging.py:145)
+22:03:16.868 [I] Progress on: 17.0kit/200kit rate:3.8s/it remaining:191:32:47 elapsed:01:27 postfix:- (1835763:tqdm_logging.py:145)
+22:03:32.255 [I] Progress on: 17.0kit/200kit rate:5.3s/it remaining:268:55:14 elapsed:01:42 postfix:- (1835763:tqdm_logging.py:145)
+22:03:43.035 [I] Progress on: 17.0kit/200kit rate:3.3s/it remaining:167:15:06 elapsed:01:53 postfix:- (1835763:tqdm_logging.py:145)
+22:03:53.580 [I] Progress on: 17.0kit/200kit rate:2.8s/it remaining:142:08:30 elapsed:02:04 postfix:- (1835763:tqdm_logging.py:145)
+22:04:04.889 [I] Progress on: 17.0kit/200kit rate:2.9s/it remaining:147:45:23 elapsed:02:15 postfix:- (1835763:tqdm_logging.py:145)
+22:04:22.591 [I] Progress on: 17.0kit/200kit rate:7.3s/it remaining:373:22:07 elapsed:02:33 postfix:- (1835763:tqdm_logging.py:145)
+22:04:32.861 [I] Progress on: 17.0kit/200kit rate:4.9s/it remaining:246:40:15 elapsed:02:43 postfix:- (1835763:tqdm_logging.py:145)
+22:04:43.516 [I] Progress on: 17.0kit/200kit rate:5.4s/it remaining:271:56:14 elapsed:02:54 postfix:- (1835763:tqdm_logging.py:145)
+22:04:56.446 [I] Progress on: 17.0kit/200kit rate:3.8s/it remaining:194:57:42 elapsed:03:07 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@532.086] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000097.jpg'): can't open/read file: check file path/integrity
+22:05:44.669 [I] Progress on: 17.0kit/200kit rate:15.1s/it remaining:768:21:50 elapsed:03:55 postfix:- (1835763:tqdm_logging.py:145)
+22:05:56.174 [I] Progress on: 17.0kit/200kit rate:5.8s/it remaining:293:08:15 elapsed:04:06 postfix:- (1835763:tqdm_logging.py:145)
+22:06:07.673 [I] Progress on: 17.0kit/200kit rate:4.4s/it remaining:224:09:10 elapsed:04:18 postfix:- (1835763:tqdm_logging.py:145)
+22:06:18.960 [I] Progress on: 17.0kit/200kit rate:3.3s/it remaining:166:58:25 elapsed:04:29 postfix:- (1835763:tqdm_logging.py:145)
+22:06:55.584 [I] Progress on: 17.1kit/200kit rate:13.3s/it remaining:675:15:44 elapsed:05:06 postfix:- (1835763:tqdm_logging.py:145)
+22:07:05.976 [I] Progress on: 17.1kit/200kit rate:5.2s/it remaining:263:04:37 elapsed:05:16 postfix:- (1835763:tqdm_logging.py:145)
+22:07:16.767 [I] Progress on: 17.1kit/200kit rate:4.0s/it remaining:204:05:48 elapsed:05:27 postfix:- (1835763:tqdm_logging.py:145)
+22:07:28.747 [I] Progress on: 17.1kit/200kit rate:3.3s/it remaining:166:39:30 elapsed:05:39 postfix:- (1835763:tqdm_logging.py:145)
+22:08:01.892 [I] Progress on: 17.1kit/200kit rate:12.2s/it remaining:621:56:46 elapsed:06:12 postfix:- (1835763:tqdm_logging.py:145)
+22:08:12.297 [I] Progress on: 17.1kit/200kit rate:4.9s/it remaining:250:26:02 elapsed:06:23 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@763.466] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000087.jpg'): can't open/read file: check file path/integrity
+22:08:23.994 [I] Progress on: 17.1kit/200kit rate:3.4s/it remaining:170:17:22 elapsed:06:34 postfix:- (1835763:tqdm_logging.py:145)
+22:08:58.998 [I] Progress on: 17.1kit/200kit rate:10.0s/it remaining:507:12:50 elapsed:07:09 postfix:- (1835763:tqdm_logging.py:145)
+22:09:09.390 [I] Progress on: 17.1kit/200kit rate:4.4s/it remaining:222:44:48 elapsed:07:20 postfix:- (1835763:tqdm_logging.py:145)
+22:09:20.308 [I] Progress on: 17.1kit/200kit rate:3.1s/it remaining:157:43:11 elapsed:07:31 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@822.131] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000101.jpg'): can't open/read file: check file path/integrity
+22:09:52.658 [I] Progress on: 17.1kit/200kit rate:9.2s/it remaining:465:00:53 elapsed:08:03 postfix:- (1835763:tqdm_logging.py:145)
+22:10:03.082 [I] Progress on: 17.1kit/200kit rate:4.2s/it remaining:212:59:38 elapsed:08:13 postfix:- (1835763:tqdm_logging.py:145)
+22:10:13.619 [I] Progress on: 17.1kit/200kit rate:3.0s/it remaining:152:59:13 elapsed:08:24 postfix:- (1835763:tqdm_logging.py:145)
+22:10:43.929 [I] Progress on: 17.1kit/200kit rate:8.5s/it remaining:431:14:48 elapsed:08:54 postfix:- (1835763:tqdm_logging.py:145)
+wandb: WARNING Tried to log to step 17100 that is less than the current step 17101. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+22:10:54.691 [I] Progress on: 17.1kit/200kit rate:4.1s/it remaining:207:40:32 elapsed:09:05 postfix:- (1835763:tqdm_logging.py:145)
+22:11:05.560 [I] Progress on: 17.1kit/200kit rate:3.0s/it remaining:153:41:06 elapsed:09:16 postfix:- (1835763:tqdm_logging.py:145)
+22:11:30.714 [I] Progress on: 17.1kit/200kit rate:7.1s/it remaining:359:17:54 elapsed:09:41 postfix:- (1835763:tqdm_logging.py:145)
+22:11:41.111 [I] Progress on: 17.1kit/200kit rate:3.7s/it remaining:186:56:28 elapsed:09:51 postfix:- (1835763:tqdm_logging.py:145)
+22:11:52.773 [I] Progress on: 17.1kit/200kit rate:3.0s/it remaining:154:53:16 elapsed:10:03 postfix:- (1835763:tqdm_logging.py:145)
+22:12:20.455 [I] Progress on: 17.1kit/200kit rate:7.8s/it remaining:397:45:17 elapsed:10:31 postfix:- (1835763:tqdm_logging.py:145)
+22:12:30.877 [I] Progress on: 17.1kit/200kit rate:3.9s/it remaining:196:41:16 elapsed:10:41 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@1015.820] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo30/left/000021.jpg'): can't open/read file: check file path/integrity
+22:12:42.367 [I] Progress on: 17.1kit/200kit rate:3.1s/it remaining:155:35:12 elapsed:10:53 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@967.805] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000090.jpg'): can't open/read file: check file path/integrity
+22:13:05.376 [I] Progress on: 17.1kit/200kit rate:6.4s/it remaining:326:14:04 elapsed:11:16 postfix:- (1835763:tqdm_logging.py:145)
+22:13:15.777 [I] Progress on: 17.1kit/200kit rate:3.5s/it remaining:179:19:17 elapsed:11:26 postfix:- (1835763:tqdm_logging.py:145)
+22:13:28.117 [I] Progress on: 17.1kit/200kit rate:3.1s/it remaining:156:29:07 elapsed:11:38 postfix:- (1835763:tqdm_logging.py:145)
+22:13:52.425 [I] Progress on: 17.1kit/200kit rate:6.8s/it remaining:346:15:04 elapsed:12:03 postfix:- (1835763:tqdm_logging.py:145)
+22:14:02.841 [I] Progress on: 17.1kit/200kit rate:3.6s/it remaining:184:25:51 elapsed:12:13 postfix:- (1835763:tqdm_logging.py:145)
+22:14:14.721 [I] Progress on: 17.2kit/200kit rate:3.0s/it remaining:154:31:45 elapsed:12:25 postfix:- (1835763:tqdm_logging.py:145)
+22:14:36.668 [I] Progress on: 17.2kit/200kit rate:6.1s/it remaining:310:10:34 elapsed:12:47 postfix:- (1835763:tqdm_logging.py:145)
+22:14:47.063 [I] Progress on: 17.2kit/200kit rate:3.4s/it remaining:175:12:09 elapsed:12:57 postfix:- (1835763:tqdm_logging.py:145)
+22:14:58.060 [I] Progress on: 17.2kit/200kit rate:2.9s/it remaining:146:45:20 elapsed:13:08 postfix:- (1835763:tqdm_logging.py:145)
+22:15:20.880 [I] Progress on: 17.2kit/200kit rate:6.3s/it remaining:321:18:55 elapsed:13:31 postfix:- (1835763:tqdm_logging.py:145)
+22:15:31.277 [I] Progress on: 17.2kit/200kit rate:3.5s/it remaining:177:57:13 elapsed:13:41 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@1129.731] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000091.jpg'): can't open/read file: check file path/integrity
+22:15:42.314 [I] Progress on: 17.2kit/200kit rate:2.9s/it remaining:147:44:39 elapsed:13:53 postfix:- (1835763:tqdm_logging.py:145)
+22:16:03.609 [I] Progress on: 17.2kit/200kit rate:5.8s/it remaining:296:08:10 elapsed:14:14 postfix:- (1835763:tqdm_logging.py:145)
+22:16:14.019 [I] Progress on: 17.2kit/200kit rate:3.4s/it remaining:172:12:08 elapsed:14:24 postfix:- (1835763:tqdm_logging.py:145)
+22:16:25.483 [I] Progress on: 17.2kit/200kit rate:2.9s/it remaining:149:45:35 elapsed:14:36 postfix:- (1835763:tqdm_logging.py:145)
+22:16:45.869 [I] Progress on: 17.2kit/200kit rate:5.6s/it remaining:285:24:19 elapsed:14:56 postfix:- (1835763:tqdm_logging.py:145)
+22:16:56.274 [I] Progress on: 17.2kit/200kit rate:3.3s/it remaining:169:27:33 elapsed:15:06 postfix:- (1835763:tqdm_logging.py:145)
+22:17:07.189 [I] Progress on: 17.2kit/200kit rate:2.8s/it remaining:144:19:52 elapsed:15:17 postfix:- (1835763:tqdm_logging.py:145)
+22:17:27.171 [I] Progress on: 17.2kit/200kit rate:5.4s/it remaining:275:54:29 elapsed:15:37 postfix:- (1835763:tqdm_logging.py:145)
+22:17:37.564 [I] Progress on: 17.2kit/200kit rate:3.3s/it remaining:167:08:22 elapsed:15:48 postfix:- (1835763:tqdm_logging.py:145)
+22:17:49.364 [I] Progress on: 17.2kit/200kit rate:3.0s/it remaining:150:41:43 elapsed:16:00 postfix:- (1835763:tqdm_logging.py:145)
+22:18:08.121 [I] Progress on: 17.2kit/200kit rate:5.1s/it remaining:260:30:38 elapsed:16:18 postfix:- (1835763:tqdm_logging.py:145)
+22:18:18.531 [I] Progress on: 17.2kit/200kit rate:3.2s/it remaining:163:33:22 elapsed:16:29 postfix:- (1835763:tqdm_logging.py:145)
+22:18:29.315 [I] Progress on: 17.2kit/200kit rate:2.8s/it remaining:142:25:21 elapsed:16:40 postfix:- (1835763:tqdm_logging.py:145)
+22:18:47.848 [I] Progress on: 17.2kit/200kit rate:5.0s/it remaining:253:20:31 elapsed:16:58 postfix:- (1835763:tqdm_logging.py:145)
+22:18:58.253 [I] Progress on: 17.2kit/200kit rate:3.2s/it remaining:161:53:50 elapsed:17:08 postfix:- (1835763:tqdm_logging.py:145)
+22:19:09.114 [I] Progress on: 17.2kit/200kit rate:2.8s/it remaining:142:31:13 elapsed:17:19 postfix:- (1835763:tqdm_logging.py:145)
+22:19:26.050 [I] Progress on: 17.2kit/200kit rate:4.6s/it remaining:231:13:51 elapsed:17:36 postfix:- (1835763:tqdm_logging.py:145)
+22:19:37.135 [I] Progress on: 17.2kit/200kit rate:3.1s/it remaining:159:40:23 elapsed:17:47 postfix:- (1835763:tqdm_logging.py:145)
+22:19:47.701 [I] Progress on: 17.2kit/200kit rate:2.8s/it remaining:140:15:45 elapsed:17:58 postfix:- (1835763:tqdm_logging.py:145)
+22:20:04.477 [I] Progress on: 17.3kit/200kit rate:4.5s/it remaining:228:29:28 elapsed:18:15 postfix:- (1835763:tqdm_logging.py:145)
+22:20:15.203 [I] Progress on: 17.3kit/200kit rate:3.1s/it remaining:157:20:46 elapsed:18:25 postfix:- (1835763:tqdm_logging.py:145)
+22:20:25.805 [I] Progress on: 17.3kit/200kit rate:2.8s/it remaining:139:57:39 elapsed:18:36 postfix:- (1835763:tqdm_logging.py:145)
+22:20:40.419 [I] Progress on: 17.3kit/200kit rate:3.8s/it remaining:195:01:17 elapsed:18:51 postfix:- (1835763:tqdm_logging.py:145)
+22:20:51.529 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:151:17:23 elapsed:19:02 postfix:- (1835763:tqdm_logging.py:145)
+22:21:02.083 [I] Progress on: 17.3kit/200kit rate:2.7s/it remaining:137:59:19 elapsed:19:12 postfix:- (1835763:tqdm_logging.py:145)
+22:21:17.144 [I] Progress on: 17.3kit/200kit rate:4.0s/it remaining:201:51:02 elapsed:19:27 postfix:- (1835763:tqdm_logging.py:145)
+22:21:27.761 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:150:10:03 elapsed:19:38 postfix:- (1835763:tqdm_logging.py:145)
+22:21:38.322 [I] Progress on: 17.3kit/200kit rate:2.7s/it remaining:137:48:12 elapsed:19:49 postfix:- (1835763:tqdm_logging.py:145)
+22:21:53.861 [I] Progress on: 17.3kit/200kit rate:4.1s/it remaining:208:39:34 elapsed:20:04 postfix:- (1835763:tqdm_logging.py:145)
+22:22:04.525 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:152:08:18 elapsed:20:15 postfix:- (1835763:tqdm_logging.py:145)
+22:22:15.100 [I] Progress on: 17.3kit/200kit rate:2.7s/it remaining:138:29:25 elapsed:20:25 postfix:- (1835763:tqdm_logging.py:145)
+22:22:29.979 [I] Progress on: 17.3kit/200kit rate:3.9s/it remaining:198:00:14 elapsed:20:40 postfix:- (1835763:tqdm_logging.py:145)
+22:22:41.465 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:154:00:49 elapsed:20:52 postfix:- (1835763:tqdm_logging.py:145)
+22:22:52.223 [I] Progress on: 17.3kit/200kit rate:2.8s/it remaining:141:59:55 elapsed:21:02 postfix:- (1835763:tqdm_logging.py:145)
+22:23:06.422 [I] Progress on: 17.3kit/200kit rate:3.8s/it remaining:192:41:42 elapsed:21:17 postfix:- (1835763:tqdm_logging.py:145)
+22:23:17.940 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:152:42:38 elapsed:21:28 postfix:- (1835763:tqdm_logging.py:145)
+22:23:28.497 [I] Progress on: 17.3kit/200kit rate:2.7s/it remaining:138:17:33 elapsed:21:39 postfix:- (1835763:tqdm_logging.py:145)
+22:23:41.771 [I] Progress on: 17.3kit/200kit rate:3.5s/it remaining:176:13:00 elapsed:21:52 postfix:- (1835763:tqdm_logging.py:145)
+22:23:53.692 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:150:54:20 elapsed:22:04 postfix:- (1835763:tqdm_logging.py:145)
+22:24:04.234 [I] Progress on: 17.3kit/200kit rate:2.7s/it remaining:137:53:16 elapsed:22:14 postfix:- (1835763:tqdm_logging.py:145)
+22:24:18.311 [I] Progress on: 17.3kit/200kit rate:3.7s/it remaining:186:13:32 elapsed:22:29 postfix:- (1835763:tqdm_logging.py:145)
+22:24:30.379 [I] Progress on: 17.3kit/200kit rate:3.0s/it remaining:154:02:49 elapsed:22:41 postfix:- (1835763:tqdm_logging.py:145)
+22:24:40.927 [I] Progress on: 17.3kit/200kit rate:2.7s/it remaining:138:35:58 elapsed:22:51 postfix:- (1835763:tqdm_logging.py:145)
+22:24:54.620 [I] Progress on: 17.4kit/200kit rate:3.6s/it remaining:180:32:28 elapsed:23:05 postfix:- (1835763:tqdm_logging.py:145)
+22:25:06.078 [I] Progress on: 17.4kit/200kit rate:2.9s/it remaining:149:22:48 elapsed:23:16 postfix:- (1835763:tqdm_logging.py:145)
+22:25:17.109 [I] Progress on: 17.4kit/200kit rate:2.9s/it remaining:144:46:28 elapsed:23:27 postfix:- (1835763:tqdm_logging.py:145)
+22:25:30.685 [I] Progress on: 17.4kit/200kit rate:3.5s/it remaining:178:23:24 elapsed:23:41 postfix:- (1835763:tqdm_logging.py:145)
+22:25:41.807 [I] Progress on: 17.4kit/200kit rate:2.9s/it remaining:147:03:57 elapsed:23:52 postfix:- (1835763:tqdm_logging.py:145)
+22:25:53.266 [I] Progress on: 17.4kit/200kit rate:3.0s/it remaining:150:41:14 elapsed:24:03 postfix:- (1835763:tqdm_logging.py:145)
+22:26:05.839 [I] Progress on: 17.4kit/200kit rate:3.3s/it remaining:165:06:10 elapsed:24:16 postfix:- (1835763:tqdm_logging.py:145)
+22:26:17.670 [I] Progress on: 17.4kit/200kit rate:2.9s/it remaining:148:55:44 elapsed:24:28 postfix:- (1835763:tqdm_logging.py:145)
+22:26:29.196 [I] Progress on: 17.4kit/200kit rate:3.0s/it remaining:152:07:27 elapsed:24:39 postfix:- (1835763:tqdm_logging.py:145)
+22:26:41.437 [I] Progress on: 17.4kit/200kit rate:3.2s/it remaining:160:21:55 elapsed:24:52 postfix:- (1835763:tqdm_logging.py:145)
+22:26:53.662 [I] Progress on: 17.4kit/200kit rate:3.0s/it remaining:154:27:13 elapsed:25:04 postfix:- (1835763:tqdm_logging.py:145)
+22:27:05.492 [I] Progress on: 17.4kit/200kit rate:3.1s/it remaining:158:18:12 elapsed:25:16 postfix:- (1835763:tqdm_logging.py:145)
+22:27:16.890 [I] Progress on: 17.4kit/200kit rate:3.0s/it remaining:151:50:15 elapsed:25:27 postfix:- (1835763:tqdm_logging.py:145)
+22:27:27.099 [I] Progress on: 17.4kit/200kit rate:3.4s/it remaining:170:44:25 elapsed:25:37 postfix:- (1835763:tqdm_logging.py:145)
+22:27:37.515 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:142:01:09 elapsed:25:48 postfix:- (1835763:tqdm_logging.py:145)
+22:27:49.347 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:142:41:59 elapsed:26:00 postfix:- (1835763:tqdm_logging.py:145)
+22:28:02.844 [I] Progress on: 17.4kit/200kit rate:3.4s/it remaining:170:29:12 elapsed:26:13 postfix:- (1835763:tqdm_logging.py:145)
+22:28:13.231 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:141:45:45 elapsed:26:23 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@1904.703] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox/Demo35/left/000094.jpg'): can't open/read file: check file path/integrity
+22:28:25.324 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:143:27:48 elapsed:26:36 postfix:- (1835763:tqdm_logging.py:145)
+22:28:38.598 [I] Progress on: 17.4kit/200kit rate:3.3s/it remaining:169:10:17 elapsed:26:49 postfix:- (1835763:tqdm_logging.py:145)
+22:28:48.986 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:141:24:34 elapsed:26:59 postfix:- (1835763:tqdm_logging.py:145)
+22:29:01.387 [I] Progress on: 17.4kit/200kit rate:2.9s/it remaining:144:53:27 elapsed:27:12 postfix:- (1835763:tqdm_logging.py:145)
+22:29:14.816 [I] Progress on: 17.4kit/200kit rate:3.4s/it remaining:171:30:31 elapsed:27:25 postfix:- (1835763:tqdm_logging.py:145)
+22:29:25.220 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:142:09:44 elapsed:27:35 postfix:- (1835763:tqdm_logging.py:145)
+22:29:37.215 [I] Progress on: 17.4kit/200kit rate:2.8s/it remaining:142:55:10 elapsed:27:47 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2012.972] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000101.jpg'): can't open/read file: check file path/integrity
+22:29:50.623 [I] Progress on: 17.4kit/200kit rate:3.4s/it remaining:170:48:38 elapsed:28:01 postfix:- (1835763:tqdm_logging.py:145)
+22:30:01.017 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:141:49:38 elapsed:28:11 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2084.115] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000100.jpg'): can't open/read file: check file path/integrity
+22:30:12.977 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:142:37:16 elapsed:28:23 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2093.724] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000088.jpg'): can't open/read file: check file path/integrity
+22:30:26.708 [I] Progress on: 17.5kit/200kit rate:3.4s/it remaining:173:01:00 elapsed:28:37 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2111.407] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo30/left/000021.jpg'): can't open/read file: check file path/integrity
+22:30:37.105 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:142:21:09 elapsed:28:47 postfix:- (1835763:tqdm_logging.py:145)
+22:30:49.212 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:143:29:16 elapsed:28:59 postfix:- (1835763:tqdm_logging.py:145)
+22:31:03.131 [I] Progress on: 17.5kit/200kit rate:3.4s/it remaining:174:43:53 elapsed:29:13 postfix:- (1835763:tqdm_logging.py:145)
+22:31:13.533 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:142:51:17 elapsed:29:24 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2098.026] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000087.jpg'): can't open/read file: check file path/integrity
+22:31:25.668 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:144:07:27 elapsed:29:36 postfix:- (1835763:tqdm_logging.py:145)
+22:31:39.198 [I] Progress on: 17.5kit/200kit rate:3.4s/it remaining:172:23:38 elapsed:29:49 postfix:- (1835763:tqdm_logging.py:145)
+22:31:49.617 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:142:25:05 elapsed:30:00 postfix:- (1835763:tqdm_logging.py:145)
+22:32:01.781 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:143:55:43 elapsed:30:12 postfix:- (1835763:tqdm_logging.py:145)
+22:32:15.342 [I] Progress on: 17.5kit/200kit rate:3.4s/it remaining:173:05:40 elapsed:30:26 postfix:- (1835763:tqdm_logging.py:145)
+22:32:25.897 [I] Progress on: 17.5kit/200kit rate:2.9s/it remaining:145:58:55 elapsed:30:36 postfix:- (1835763:tqdm_logging.py:145)
+22:32:37.862 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:143:19:56 elapsed:30:48 postfix:- (1835763:tqdm_logging.py:145)
+22:32:51.251 [I] Progress on: 17.5kit/200kit rate:3.4s/it remaining:170:24:10 elapsed:31:01 postfix:- (1835763:tqdm_logging.py:145)
+22:33:01.655 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:141:51:17 elapsed:31:12 postfix:- (1835763:tqdm_logging.py:145)
+22:33:13.802 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:143:47:35 elapsed:31:24 postfix:- (1835763:tqdm_logging.py:145)
+22:33:27.252 [I] Progress on: 17.5kit/200kit rate:3.4s/it remaining:171:47:44 elapsed:31:37 postfix:- (1835763:tqdm_logging.py:145)
+22:33:37.679 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:142:17:33 elapsed:31:48 postfix:- (1835763:tqdm_logging.py:145)
+22:33:49.686 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:142:53:48 elapsed:32:00 postfix:- (1835763:tqdm_logging.py:145)
+22:34:03.976 [I] Progress on: 17.5kit/200kit rate:3.6s/it remaining:183:24:47 elapsed:32:14 postfix:- (1835763:tqdm_logging.py:145)
+22:34:14.380 [I] Progress on: 17.5kit/200kit rate:2.9s/it remaining:145:02:58 elapsed:32:25 postfix:- (1835763:tqdm_logging.py:145)
+22:34:26.012 [I] Progress on: 17.5kit/200kit rate:2.8s/it remaining:141:32:26 elapsed:32:36 postfix:- (1835763:tqdm_logging.py:145)
+22:34:40.001 [I] Progress on: 17.5kit/200kit rate:3.6s/it remaining:182:56:32 elapsed:32:50 postfix:- (1835763:tqdm_logging.py:145)
+22:34:50.416 [I] Progress on: 17.5kit/200kit rate:2.9s/it remaining:144:53:49 elapsed:33:01 postfix:- (1835763:tqdm_logging.py:145)
+22:35:01.736 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:140:14:57 elapsed:33:12 postfix:- (1835763:tqdm_logging.py:145)
+22:35:15.545 [I] Progress on: 17.6kit/200kit rate:3.5s/it remaining:175:42:49 elapsed:33:26 postfix:- (1835763:tqdm_logging.py:145)
+22:35:25.961 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:143:16:04 elapsed:33:36 postfix:- (1835763:tqdm_logging.py:145)
+22:35:38.043 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:143:49:33 elapsed:33:48 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2417.205] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000086.jpg'): can't open/read file: check file path/integrity
+22:35:51.177 [I] Progress on: 17.6kit/200kit rate:3.4s/it remaining:170:57:55 elapsed:34:01 postfix:- (1835763:tqdm_logging.py:145)
+22:36:01.583 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:141:55:47 elapsed:34:12 postfix:- (1835763:tqdm_logging.py:145)
+22:36:11.812 [I] Progress on: 17.6kit/200kit rate:3.0s/it remaining:153:18:47 elapsed:34:22 postfix:- (1835763:tqdm_logging.py:145)
+22:36:22.659 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:140:48:53 elapsed:34:33 postfix:- (1835763:tqdm_logging.py:145)
+22:36:35.054 [I] Progress on: 17.6kit/200kit rate:2.9s/it remaining:144:42:41 elapsed:34:45 postfix:- (1835763:tqdm_logging.py:145)
+22:36:45.404 [I] Progress on: 17.6kit/200kit rate:3.2s/it remaining:162:38:00 elapsed:34:56 postfix:- (1835763:tqdm_logging.py:145)
+22:36:56.346 [I] Progress on: 17.6kit/200kit rate:2.9s/it remaining:146:26:27 elapsed:35:07 postfix:- (1835763:tqdm_logging.py:145)
+22:37:08.350 [I] Progress on: 17.6kit/200kit rate:2.9s/it remaining:147:24:49 elapsed:35:19 postfix:- (1835763:tqdm_logging.py:145)
+22:37:18.889 [I] Progress on: 17.6kit/200kit rate:3.5s/it remaining:176:44:43 elapsed:35:29 postfix:- (1835763:tqdm_logging.py:145)
+22:37:29.368 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:143:24:21 elapsed:35:40 postfix:- (1835763:tqdm_logging.py:145)
+22:37:41.628 [I] Progress on: 17.6kit/200kit rate:3.0s/it remaining:152:08:41 elapsed:35:52 postfix:- (1835763:tqdm_logging.py:145)
+22:37:54.778 [I] Progress on: 17.6kit/200kit rate:3.5s/it remaining:175:54:13 elapsed:36:05 postfix:- (1835763:tqdm_logging.py:145)
+22:38:05.204 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:143:15:22 elapsed:36:15 postfix:- (1835763:tqdm_logging.py:145)
+22:38:17.529 [I] Progress on: 17.6kit/200kit rate:3.0s/it remaining:152:26:55 elapsed:36:28 postfix:- (1835763:tqdm_logging.py:145)
+22:38:30.672 [I] Progress on: 17.6kit/200kit rate:3.5s/it remaining:175:51:11 elapsed:36:41 postfix:- (1835763:tqdm_logging.py:145)
+22:38:41.081 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:143:06:30 elapsed:36:51 postfix:- (1835763:tqdm_logging.py:145)
+22:38:53.378 [I] Progress on: 17.6kit/200kit rate:3.0s/it remaining:152:21:05 elapsed:37:04 postfix:- (1835763:tqdm_logging.py:145)
+22:39:06.257 [I] Progress on: 17.6kit/200kit rate:3.4s/it remaining:171:39:48 elapsed:37:16 postfix:- (1835763:tqdm_logging.py:145)
+22:39:16.682 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:142:14:24 elapsed:37:27 postfix:- (1835763:tqdm_logging.py:145)
+22:39:28.909 [I] Progress on: 17.6kit/200kit rate:2.9s/it remaining:149:10:23 elapsed:37:39 postfix:- (1835763:tqdm_logging.py:145)
+22:39:42.081 [I] Progress on: 17.6kit/200kit rate:3.4s/it remaining:172:51:47 elapsed:37:52 postfix:- (1835763:tqdm_logging.py:145)
+22:39:52.467 [I] Progress on: 17.6kit/200kit rate:2.8s/it remaining:142:07:03 elapsed:38:03 postfix:- (1835763:tqdm_logging.py:145)
+22:40:04.810 [I] Progress on: 17.7kit/200kit rate:3.0s/it remaining:150:13:52 elapsed:38:15 postfix:- (1835763:tqdm_logging.py:145)
+22:40:17.921 [I] Progress on: 17.7kit/200kit rate:3.4s/it remaining:172:31:09 elapsed:38:28 postfix:- (1835763:tqdm_logging.py:145)
+22:40:28.316 [I] Progress on: 17.7kit/200kit rate:2.8s/it remaining:142:06:51 elapsed:38:39 postfix:- (1835763:tqdm_logging.py:145)
+22:40:38.459 [I] Progress on: 17.7kit/200kit rate:3.2s/it remaining:162:50:04 elapsed:38:49 postfix:- (1835763:tqdm_logging.py:145)
+22:40:49.434 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:146:45:22 elapsed:39:00 postfix:- (1835763:tqdm_logging.py:145)
+22:41:01.823 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:146:14:36 elapsed:39:12 postfix:- (1835763:tqdm_logging.py:145)
+22:41:14.277 [I] Progress on: 17.7kit/200kit rate:3.2s/it remaining:159:52:05 elapsed:39:24 postfix:- (1835763:tqdm_logging.py:145)
+22:41:25.363 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:147:25:18 elapsed:39:36 postfix:- (1835763:tqdm_logging.py:145)
+22:41:37.619 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:145:21:32 elapsed:39:48 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2786.685] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000087.jpg'): can't open/read file: check file path/integrity
+22:41:50.072 [I] Progress on: 17.7kit/200kit rate:3.2s/it remaining:160:07:59 elapsed:40:00 postfix:- (1835763:tqdm_logging.py:145)
+22:42:01.060 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:146:24:33 elapsed:40:11 postfix:- (1835763:tqdm_logging.py:145)
+22:42:13.361 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:145:26:37 elapsed:40:24 postfix:- (1835763:tqdm_logging.py:145)
+22:42:24.792 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:147:38:56 elapsed:40:35 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2748.679] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000098.jpg'): can't open/read file: check file path/integrity
+22:42:37.293 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:148:02:40 elapsed:40:47 postfix:- (1835763:tqdm_logging.py:145)
+22:42:49.670 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:146:06:19 elapsed:41:00 postfix:- (1835763:tqdm_logging.py:145)
+22:43:02.105 [I] Progress on: 17.7kit/200kit rate:3.2s/it remaining:160:04:20 elapsed:41:12 postfix:- (1835763:tqdm_logging.py:145)
+22:43:13.140 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:146:55:57 elapsed:41:23 postfix:- (1835763:tqdm_logging.py:145)
+22:43:25.415 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:145:23:23 elapsed:41:36 postfix:- (1835763:tqdm_logging.py:145)
+22:43:37.862 [I] Progress on: 17.7kit/200kit rate:3.2s/it remaining:159:59:19 elapsed:41:48 postfix:- (1835763:tqdm_logging.py:145)
+22:43:48.902 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:146:57:40 elapsed:41:59 postfix:- (1835763:tqdm_logging.py:145)
+22:44:01.204 [I] Progress on: 17.7kit/200kit rate:2.9s/it remaining:145:41:04 elapsed:42:11 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2841.704] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000089.jpg'): can't open/read file: check file path/integrity
+22:44:13.935 [I] Progress on: 17.7kit/200kit rate:3.2s/it remaining:161:24:37 elapsed:42:24 postfix:- (1835763:tqdm_logging.py:145)
+22:44:25.235 [I] Progress on: 17.7kit/200kit rate:3.0s/it remaining:150:01:50 elapsed:42:35 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@2929.186] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000101.jpg'): can't open/read file: check file path/integrity
+22:44:37.104 [I] Progress on: 17.7kit/200kit rate:2.8s/it remaining:144:10:31 elapsed:42:47 postfix:- (1835763:tqdm_logging.py:145)
+22:44:49.653 [I] Progress on: 17.7kit/200kit rate:3.1s/it remaining:159:13:34 elapsed:43:00 postfix:- (1835763:tqdm_logging.py:145)
+22:45:00.658 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:34:53 elapsed:43:11 postfix:- (1835763:tqdm_logging.py:145)
+22:45:12.749 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:144:26:41 elapsed:43:23 postfix:- (1835763:tqdm_logging.py:145)
+22:45:25.401 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:160:24:39 elapsed:43:36 postfix:- (1835763:tqdm_logging.py:145)
+22:45:36.359 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:05:58 elapsed:43:47 postfix:- (1835763:tqdm_logging.py:145)
+22:45:48.268 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:143:18:07 elapsed:43:58 postfix:- (1835763:tqdm_logging.py:145)
+22:46:00.987 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:160:35:06 elapsed:44:11 postfix:- (1835763:tqdm_logging.py:145)
+22:46:11.960 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:15:39 elapsed:44:22 postfix:- (1835763:tqdm_logging.py:145)
+22:46:23.856 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:143:09:55 elapsed:44:34 postfix:- (1835763:tqdm_logging.py:145)
+22:46:36.473 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:159:52:49 elapsed:44:47 postfix:- (1835763:tqdm_logging.py:145)
+22:46:47.462 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:17:48 elapsed:44:58 postfix:- (1835763:tqdm_logging.py:145)
+22:46:59.391 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:143:23:01 elapsed:45:10 postfix:- (1835763:tqdm_logging.py:145)
+22:47:12.081 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:160:20:50 elapsed:45:22 postfix:- (1835763:tqdm_logging.py:145)
+22:47:22.843 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:58:26 elapsed:45:33 postfix:- (1835763:tqdm_logging.py:145)
+22:47:35.169 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:144:11:45 elapsed:45:45 postfix:- (1835763:tqdm_logging.py:145)
+22:47:47.891 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:160:42:46 elapsed:45:58 postfix:- (1835763:tqdm_logging.py:145)
+22:47:58.910 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:44:24 elapsed:46:09 postfix:- (1835763:tqdm_logging.py:145)
+22:48:10.899 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:143:56:21 elapsed:46:21 postfix:- (1835763:tqdm_logging.py:145)
+22:48:23.609 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:160:40:59 elapsed:46:34 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@3134.147] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox/Demo35/left/000094.jpg'): can't open/read file: check file path/integrity
+22:48:34.605 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:34:07 elapsed:46:45 postfix:- (1835763:tqdm_logging.py:145)
+22:48:46.541 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:143:32:01 elapsed:46:57 postfix:- (1835763:tqdm_logging.py:145)
+22:48:59.427 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:162:21:03 elapsed:47:10 postfix:- (1835763:tqdm_logging.py:145)
+22:49:10.472 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:147:45:48 elapsed:47:21 postfix:- (1835763:tqdm_logging.py:145)
+22:49:22.282 [I] Progress on: 17.8kit/200kit rate:2.8s/it remaining:143:10:10 elapsed:47:32 postfix:- (1835763:tqdm_logging.py:145)
+22:49:34.978 [I] Progress on: 17.8kit/200kit rate:3.2s/it remaining:160:02:59 elapsed:47:45 postfix:- (1835763:tqdm_logging.py:145)
+22:49:46.006 [I] Progress on: 17.8kit/200kit rate:2.9s/it remaining:146:52:00 elapsed:47:56 postfix:- (1835763:tqdm_logging.py:145)
+22:49:58.033 [I] Progress on: 17.9kit/200kit rate:2.8s/it remaining:144:03:41 elapsed:48:08 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@3289.327] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox/Demo35/left/000092.jpg'): can't open/read file: check file path/integrity
+22:50:10.602 [I] Progress on: 17.9kit/200kit rate:3.1s/it remaining:158:44:22 elapsed:48:21 postfix:- (1835763:tqdm_logging.py:145)
+22:50:21.574 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:145:44:35 elapsed:48:32 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@3251.633] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000101.jpg'): can't open/read file: check file path/integrity
+22:50:33.456 [I] Progress on: 17.9kit/200kit rate:2.8s/it remaining:143:08:52 elapsed:48:44 postfix:- (1835763:tqdm_logging.py:145)
+22:50:46.156 [I] Progress on: 17.9kit/200kit rate:3.2s/it remaining:161:01:57 elapsed:48:56 postfix:- (1835763:tqdm_logging.py:145)
+22:50:57.199 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:147:31:01 elapsed:49:07 postfix:- (1835763:tqdm_logging.py:145)
+22:51:09.072 [I] Progress on: 17.9kit/200kit rate:2.8s/it remaining:143:19:46 elapsed:49:19 postfix:- (1835763:tqdm_logging.py:145)
+22:51:22.173 [I] Progress on: 17.9kit/200kit rate:3.3s/it remaining:166:19:57 elapsed:49:32 postfix:- (1835763:tqdm_logging.py:145)
+22:51:33.148 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:147:43:19 elapsed:49:43 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@3349.883] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000087.jpg'): can't open/read file: check file path/integrity
+22:51:45.032 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:146:48:43 elapsed:49:55 postfix:- (1835763:tqdm_logging.py:145)
+22:51:57.568 [I] Progress on: 17.9kit/200kit rate:3.2s/it remaining:160:33:09 elapsed:50:08 postfix:- (1835763:tqdm_logging.py:145)
+22:52:08.582 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:146:48:15 elapsed:50:19 postfix:- (1835763:tqdm_logging.py:145)
+22:52:20.147 [I] Progress on: 17.9kit/200kit rate:2.8s/it remaining:143:45:48 elapsed:50:30 postfix:- (1835763:tqdm_logging.py:145)
+22:52:32.594 [I] Progress on: 17.9kit/200kit rate:3.1s/it remaining:154:20:25 elapsed:50:43 postfix:- (1835763:tqdm_logging.py:145)
+22:52:43.750 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:145:34:30 elapsed:50:54 postfix:- (1835763:tqdm_logging.py:145)
+22:52:55.684 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:147:01:07 elapsed:51:06 postfix:- (1835763:tqdm_logging.py:145)
+22:53:07.890 [I] Progress on: 17.9kit/200kit rate:3.1s/it remaining:155:05:13 elapsed:51:18 postfix:- (1835763:tqdm_logging.py:145)
+22:53:19.068 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:145:45:27 elapsed:51:29 postfix:- (1835763:tqdm_logging.py:145)
+22:53:31.304 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:149:10:13 elapsed:51:42 postfix:- (1835763:tqdm_logging.py:145)
+22:53:43.395 [I] Progress on: 17.9kit/200kit rate:3.1s/it remaining:154:18:38 elapsed:51:54 postfix:- (1835763:tqdm_logging.py:145)
+22:53:55.047 [I] Progress on: 17.9kit/200kit rate:3.0s/it remaining:150:42:30 elapsed:52:05 postfix:- (1835763:tqdm_logging.py:145)
+22:54:06.924 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:147:56:57 elapsed:52:17 postfix:- (1835763:tqdm_logging.py:145)
+22:54:19.113 [I] Progress on: 17.9kit/200kit rate:3.1s/it remaining:155:08:50 elapsed:52:29 postfix:- (1835763:tqdm_logging.py:145)
+22:54:30.294 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:145:45:57 elapsed:52:41 postfix:- (1835763:tqdm_logging.py:145)
+22:54:42.141 [I] Progress on: 17.9kit/200kit rate:2.9s/it remaining:146:20:29 elapsed:52:52 postfix:- (1835763:tqdm_logging.py:145)
+22:54:54.174 [I] Progress on: 18.0kit/200kit rate:3.0s/it remaining:153:24:02 elapsed:53:04 postfix:- (1835763:tqdm_logging.py:145)
+22:55:05.331 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:145:13:12 elapsed:53:16 postfix:- (1835763:tqdm_logging.py:145)
+22:55:17.193 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:146:24:52 elapsed:53:27 postfix:- (1835763:tqdm_logging.py:145)
+22:55:29.284 [I] Progress on: 18.0kit/200kit rate:3.1s/it remaining:154:15:26 elapsed:53:39 postfix:- (1835763:tqdm_logging.py:145)
+22:55:40.419 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:145:11:24 elapsed:53:51 postfix:- (1835763:tqdm_logging.py:145)
+22:55:52.473 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:148:43:54 elapsed:54:03 postfix:- (1835763:tqdm_logging.py:145)
+22:56:04.593 [I] Progress on: 18.0kit/200kit rate:3.1s/it remaining:154:28:50 elapsed:54:15 postfix:- (1835763:tqdm_logging.py:145)
+22:56:15.827 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:146:11:09 elapsed:54:26 postfix:- (1835763:tqdm_logging.py:145)
+22:56:27.682 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:146:11:30 elapsed:54:38 postfix:- (1835763:tqdm_logging.py:145)
+22:56:39.878 [I] Progress on: 18.0kit/200kit rate:3.1s/it remaining:154:50:59 elapsed:54:50 postfix:- (1835763:tqdm_logging.py:145)
+22:56:51.145 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:146:49:29 elapsed:55:01 postfix:- (1835763:tqdm_logging.py:145)
+22:57:03.127 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:147:37:33 elapsed:55:13 postfix:- (1835763:tqdm_logging.py:145)
+22:57:14.539 [I] Progress on: 18.0kit/200kit rate:2.9s/it remaining:144:08:25 elapsed:55:25 postfix:- (1835763:tqdm_logging.py:145)
+22:57:15.508 [I] [process=0][thread=MainThread][wait_until_finished] No Save Finalize thread to wait for. Returning. (1835763:checkpoint_manager.py:1987)
+22:57:15.509 [I] [process=0] Saving checkpoint at step 18000                                      (1835763:checkpoint_manager.py:1408)
+22:57:15.510 [I] [process=0] Started async saving checkpoint to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000. (1835763:async_checkpointer.py:439)
+22:57:15.527 [I] Using ThreadSafeKeyValueSignalingClient                                          (1835763:signaling_client.py:332)
+22:57:15.532 [I] Creating tmp directory /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0 (1835763:atomicity.py:144)
+22:57:16.132 [I] Wrote Metadata={'item_handlers': None, 'metrics': {}, 'performance_metrics': {}, 'init_timestamp_nsecs': 1760075836129003066, 'commit_timestamp_nsecs': None, 'custom_metadata': {}}, json={"item_handlers": null, "metrics": {}, "performance_metrics": {}, "init_timestamp_nsecs": 1760075836129003066, "commit_timestamp_nsecs": null, "custom_metadata": {}} to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/_CHECKPOINT_METADATA (1835763:checkpoint.py:186)
+22:57:16.133 [I] Creating tmp directory /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/assets.orbax-checkpoint-tmp-1 (1835763:atomicity.py:144)
+22:57:16.133 [I] Creating tmp directory /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/params.orbax-checkpoint-tmp-2 (1835763:atomicity.py:144)
+22:57:16.134 [I] Creating tmp directory /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/train_state.orbax-checkpoint-tmp-3 (1835763:atomicity.py:144)
+22:57:16.204 [I] Transferring arrays to host memory with options: use_replica_parallel=True, enable_pinned_host_transfer=False (1835763:replica_slices.py:341)
+22:57:23.632 [I] Transferring arrays to host memory with options: use_replica_parallel=True, enable_pinned_host_transfer=False (1835763:replica_slices.py:341)
+22:57:23.746 [I] [process=0][thread=array_type_handler] Wrote 51 array_metadata.ArrayMetadata to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/params.orbax-checkpoint-tmp-2/array_metadatas/process_0 (1835763:array_metadata_store.py:198)
+22:57:38.217 [I] [process=0] /jax/checkpoint/write/blocking_bytes_per_sec: 563.9 MiB/s (total bytes: 12.5 GiB) (time elapsed: 22 seconds) (per-host) (1835763:base_pytree_checkpoint_handler.py:114)
+22:57:38.228 [I] [process=0] /jax/checkpoint/write/blocking_bytes_per_sec: 1.7 GiB/s (total bytes: 37.5 GiB) (time elapsed: 22 seconds) (per-host) (1835763:base_pytree_checkpoint_handler.py:114)
+22:57:38.257 [I] [process=0][thread=async_save] Background save thread started.                   (1835763:async_checkpointer.py:77)
+22:57:38.264 [I] Finished blocking save in 22.75 seconds. Continuing to save asynchronously to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000. (1835763:async_checkpointer.py:548)
+22:57:38.268 [I] Preserving Checkpoint[step=5000 | time=2025-10-09 17:05:49.497680+00:00]: (Reason: on keep_period=5000). (1835763:checkpoint_manager.py:1949)
+22:57:38.269 [I] Preserving Checkpoint[step=10000 | time=2025-10-09 21:30:35.284461+00:00]: (Reason: on keep_period=5000). (1835763:checkpoint_manager.py:1949)
+22:57:38.269 [I] Preserving Checkpoint[step=15000 | time=2025-10-10 02:25:46.103460+00:00]: (Reason: on keep_period=5000). (1835763:checkpoint_manager.py:1949)
+22:57:38.284 [I] Deleting Checkpoint[step=17000 | time=2025-10-10 04:07:46.684948+00:00]: (Reason: old checkpoint). (1835763:checkpoint_manager.py:1963)
+22:57:38.286 [I] [process=0][thread=MainThread][step=18000] Starting CheckpointManager Save Finalize thread=save_finalize (1835763:checkpoint_manager.py:1453)
+22:57:38.288 [I] [process=0][thread=save_finalize] Waiting for background save thread=async_save. (1835763:async_checkpointer.py:258)
+22:57:38.290 [I] {'step': 18000, 'event_type': 'save', 'directory': '/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp', 'reached_preemption': False, 'preemption_received_at': None, 'synchronous': False, 'wait_for_prev_start_time': 1760075835.5084536, 'wait_for_prev_duration_secs': 0.0004572868347167969, 'checkpointer_blocking_start_time': 1760075835.5096195, 'checkpointer_blocking_duration_secs': 22.758460998535156, 'get_old_steps_start_time': 1760075858.2681704, 'get_old_steps_duration_secs': 0.017554521560668945, 'checkpoint_manager_blocking_start_time': 1760075835.5081291, 'checkpoint_manager_blocking_duration_secs': 22.78166389465332} (1835763:standard_logger.py:34)
+22:57:38.342 [I] Progress on: 18.0kit/200kit rate:10.0s/it remaining:504:24:41 elapsed:55:49 postfix:- (1835763:tqdm_logging.py:145)
+22:57:39.305 [I] [process=0][thread=array_type_handler] Wrote 156 array_metadata.ArrayMetadata to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/train_state.orbax-checkpoint-tmp-3/array_metadatas/process_0 (1835763:array_metadata_store.py:198)
+22:57:49.875 [I] Progress on: 18.0kit/200kit rate:10.4s/it remaining:523:36:55 elapsed:56:00 postfix:- (1835763:tqdm_logging.py:145)
+22:58:04.937 [I] Progress on: 18.0kit/200kit rate:11.9s/it remaining:599:22:18 elapsed:56:15 postfix:- (1835763:tqdm_logging.py:145)
+22:58:31.109 [I] Progress on: 18.0kit/200kit rate:11.2s/it remaining:564:33:00 elapsed:56:41 postfix:- (1835763:tqdm_logging.py:145)
+22:58:35.144 [I] [process=0] /jax/checkpoint/write/bytes_per_sec: 160.7 MiB/s (total bytes: 12.5 GiB) (time elapsed: a minute) (per-host) (1835763:base_pytree_checkpoint_handler.py:114)
+22:58:35.317 [I] [process=0] /jax/checkpoint/write/bytes_per_sec: 484.6 MiB/s (total bytes: 37.5 GiB) (time elapsed: a minute) (per-host) (1835763:base_pytree_checkpoint_handler.py:114)
+22:58:35.317 [I] [process=0][thread=async_save] 5 Handler Commit operations completed.            (1835763:async_checkpointer.py:87)
+22:58:35.320 [I] Renaming /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/assets.orbax-checkpoint-tmp-1 to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/assets (1835763:atomicity.py:289)
+22:58:35.355 [I] Updated Metadata={'item_handlers': {'assets': 'openpi.training.checkpoints.CallbackHandler', 'params': 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler', 'train_state': 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler'}, 'metrics': {}, 'performance_metrics': {}, 'init_timestamp_nsecs': 1760075836129003066, 'commit_timestamp_nsecs': None, 'custom_metadata': {}} to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/_CHECKPOINT_METADATA (1835763:checkpoint.py:245)
+22:58:35.360 [I] [process=0][thread=async_save] Skipped cross-host ArrayMetadata validation because only one process is found: process_index=0. (1835763:array_metadata_store.py:362)
+22:58:35.540 [I] Renaming /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/train_state.orbax-checkpoint-tmp-3 to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/train_state (1835763:atomicity.py:289)
+22:58:35.550 [I] [process=0][thread=async_save] Skipped cross-host ArrayMetadata validation because only one process is found: process_index=0. (1835763:array_metadata_store.py:362)
+22:58:35.581 [I] Renaming /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/params.orbax-checkpoint-tmp-2 to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0/params (1835763:atomicity.py:289)
+22:58:35.583 [I] Renaming /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000.orbax-checkpoint-tmp-0 to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000 (1835763:atomicity.py:289)
+22:58:35.611 [I] [process=0][thread=async_save] Finished saving checkpoint (finalized tmp dir) to `/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000`. (1835763:atomicity.py:573)
+22:58:35.612 [I] Finished asynchronous save (blocking + background) in 80.10 seconds to /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/18000 (1835763:async_checkpointer.py:412)
+22:58:35.612 [I] [process=0][thread=async_save] Background save thread done.                      (1835763:async_checkpointer.py:143)
+22:58:35.612 [I] [process=0][thread=save_finalize] Done with waiting for background save thread=async_save. (1835763:async_checkpointer.py:266)
+22:58:35.613 [I] [process=0][thread=save_finalize] No errors found in background save thread=async_save. (1835763:async_checkpointer.py:276)
+22:58:41.699 [I] Deleted step 17000.                                                              (1835763:deleter.py:114)
+22:58:41.699 [I] [process=0][thread=save_finalize][step=18000] CheckpointManager Save Finalize is syncing with other hosts... (1835763:checkpoint_manager.py:2095)
+22:58:41.699 [I] [process=0][thread=save_finalize][step=18000] CheckpointManager Save Finalize is done on all hosts. (1835763:checkpoint_manager.py:2110)
+22:58:42.527 [I] Progress on: 18.0kit/200kit rate:4.9s/it remaining:249:05:52 elapsed:56:53 postfix:- (1835763:tqdm_logging.py:145)
+22:58:53.093 [I] Progress on: 18.0kit/200kit rate:4.1s/it remaining:206:19:33 elapsed:57:03 postfix:- (1835763:tqdm_logging.py:145)
+22:59:05.579 [I] Progress on: 18.0kit/200kit rate:3.4s/it remaining:173:03:56 elapsed:57:16 postfix:- (1835763:tqdm_logging.py:145)
+22:59:16.319 [I] Progress on: 18.0kit/200kit rate:3.3s/it remaining:167:25:01 elapsed:57:27 postfix:- (1835763:tqdm_logging.py:145)
+22:59:28.548 [I] Progress on: 18.0kit/200kit rate:3.9s/it remaining:196:15:47 elapsed:57:39 postfix:- (1835763:tqdm_logging.py:145)
+22:59:41.896 [I] Progress on: 18.0kit/200kit rate:3.5s/it remaining:176:58:44 elapsed:57:52 postfix:- (1835763:tqdm_logging.py:145)
+22:59:52.996 [I] Progress on: 18.0kit/200kit rate:3.7s/it remaining:186:09:02 elapsed:58:03 postfix:- (1835763:tqdm_logging.py:145)
+23:00:03.489 [I] Progress on: 18.0kit/200kit rate:3.6s/it remaining:180:09:21 elapsed:58:14 postfix:- (1835763:tqdm_logging.py:145)
+23:00:15.080 [I] Progress on: 18.0kit/200kit rate:3.8s/it remaining:194:25:45 elapsed:58:25 postfix:- (1835763:tqdm_logging.py:145)
+23:00:28.222 [I] Progress on: 18.0kit/200kit rate:3.5s/it remaining:176:56:46 elapsed:58:38 postfix:- (1835763:tqdm_logging.py:145)
+23:00:38.681 [I] Progress on: 18.0kit/200kit rate:3.5s/it remaining:176:23:23 elapsed:58:49 postfix:- (1835763:tqdm_logging.py:145)
+23:00:48.956 [I] Progress on: 18.0kit/200kit rate:3.4s/it remaining:173:46:59 elapsed:58:59 postfix:- (1835763:tqdm_logging.py:145)
+23:01:00.303 [I] Progress on: 18.0kit/200kit rate:3.5s/it remaining:174:42:39 elapsed:59:11 postfix:- (1835763:tqdm_logging.py:145)
+23:01:10.841 [I] Progress on: 18.1kit/200kit rate:3.5s/it remaining:176:26:42 elapsed:59:21 postfix:- (1835763:tqdm_logging.py:145)
+23:01:21.442 [I] Progress on: 18.1kit/200kit rate:3.5s/it remaining:175:00:57 elapsed:59:32 postfix:- (1835763:tqdm_logging.py:145)
+23:01:32.953 [I] Progress on: 18.1kit/200kit rate:3.7s/it remaining:186:53:54 elapsed:59:43 postfix:- (1835763:tqdm_logging.py:145)
+23:01:46.704 [I] Progress on: 18.1kit/200kit rate:3.6s/it remaining:180:18:24 elapsed:59:57 postfix:- (1835763:tqdm_logging.py:145)
+23:01:57.449 [I] Progress on: 18.1kit/200kit rate:3.6s/it remaining:183:25:35 elapsed:1:00:08 postfix:- (1835763:tqdm_logging.py:145)
+23:02:08.795 [I] Progress on: 18.1kit/200kit rate:4.0s/it remaining:199:46:58 elapsed:1:00:19 postfix:- (1835763:tqdm_logging.py:145)
+23:02:20.887 [I] Progress on: 18.1kit/200kit rate:3.3s/it remaining:168:32:36 elapsed:1:00:31 postfix:- (1835763:tqdm_logging.py:145)
+23:02:32.632 [I] Progress on: 18.1kit/200kit rate:3.0s/it remaining:154:06:43 elapsed:1:00:43 postfix:- (1835763:tqdm_logging.py:145)
+23:02:45.639 [I] Progress on: 18.1kit/200kit rate:3.4s/it remaining:171:49:22 elapsed:1:00:56 postfix:- (1835763:tqdm_logging.py:145)
+23:02:57.446 [I] Progress on: 18.1kit/200kit rate:3.2s/it remaining:160:42:46 elapsed:1:01:08 postfix:- (1835763:tqdm_logging.py:145)
+23:03:09.188 [I] Progress on: 18.1kit/200kit rate:3.0s/it remaining:152:19:21 elapsed:1:01:19 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@4062.492] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000087.jpg'): can't open/read file: check file path/integrity
+23:03:25.290 [I] Progress on: 18.1kit/200kit rate:4.3s/it remaining:217:22:43 elapsed:1:01:35 postfix:- (1835763:tqdm_logging.py:145)
+23:03:38.518 [I] Progress on: 18.1kit/200kit rate:3.8s/it remaining:191:08:02 elapsed:1:01:49 postfix:- (1835763:tqdm_logging.py:145)
+23:03:51.299 [I] Progress on: 18.1kit/200kit rate:3.3s/it remaining:168:13:45 elapsed:1:02:02 postfix:- (1835763:tqdm_logging.py:145)
+23:04:02.130 [I] Progress on: 18.1kit/200kit rate:3.6s/it remaining:181:50:34 elapsed:1:02:12 postfix:- (1835763:tqdm_logging.py:145)
+23:04:14.764 [I] Progress on: 18.1kit/200kit rate:3.8s/it remaining:190:56:57 elapsed:1:02:25 postfix:- (1835763:tqdm_logging.py:145)
+23:04:26.524 [I] Progress on: 18.1kit/200kit rate:3.7s/it remaining:188:40:45 elapsed:1:02:37 postfix:- (1835763:tqdm_logging.py:145)
+23:04:37.001 [I] Progress on: 18.1kit/200kit rate:3.4s/it remaining:171:06:58 elapsed:1:02:47 postfix:- (1835763:tqdm_logging.py:145)
+23:04:59.225 [I] Progress on: 18.1kit/200kit rate:6.1s/it remaining:310:43:00 elapsed:1:03:09 postfix:- (1835763:tqdm_logging.py:145)
+23:05:11.560 [I] Progress on: 18.1kit/200kit rate:4.6s/it remaining:234:04:30 elapsed:1:03:22 postfix:- (1835763:tqdm_logging.py:145)
+23:05:22.804 [I] Progress on: 18.1kit/200kit rate:4.2s/it remaining:213:27:44 elapsed:1:03:33 postfix:- (1835763:tqdm_logging.py:145)
+23:05:33.352 [I] Progress on: 18.1kit/200kit rate:3.0s/it remaining:153:42:58 elapsed:1:03:44 postfix:- (1835763:tqdm_logging.py:145)
+23:05:49.148 [I] Progress on: 18.1kit/200kit rate:5.9s/it remaining:295:52:16 elapsed:1:03:59 postfix:- (1835763:tqdm_logging.py:145)
+23:06:03.456 [I] Progress on: 18.1kit/200kit rate:4.2s/it remaining:214:14:46 elapsed:1:04:14 postfix:- (1835763:tqdm_logging.py:145)
+23:06:15.180 [I] Progress on: 18.1kit/200kit rate:3.2s/it remaining:161:27:41 elapsed:1:04:25 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@4241.366] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000099.jpg'): can't open/read file: check file path/integrity
+23:06:37.823 [I] Progress on: 18.1kit/200kit rate:6.3s/it remaining:316:00:35 elapsed:1:04:48 postfix:- (1835763:tqdm_logging.py:145)
+23:06:50.572 [I] Progress on: 18.1kit/200kit rate:4.0s/it remaining:201:09:58 elapsed:1:05:01 postfix:- (1835763:tqdm_logging.py:145)
+23:07:02.510 [I] Progress on: 18.1kit/200kit rate:3.2s/it remaining:159:24:46 elapsed:1:05:13 postfix:- (1835763:tqdm_logging.py:145)
+23:07:18.806 [I] Progress on: 18.2kit/200kit rate:4.4s/it remaining:221:08:59 elapsed:1:05:29 postfix:- (1835763:tqdm_logging.py:145)
+23:07:28.979 [I] Progress on: 18.2kit/200kit rate:3.6s/it remaining:179:34:16 elapsed:1:05:39 postfix:- (1835763:tqdm_logging.py:145)
+23:07:40.872 [I] Progress on: 18.2kit/200kit rate:3.0s/it remaining:152:42:45 elapsed:1:05:51 postfix:- (1835763:tqdm_logging.py:145)
+23:07:53.469 [I] Progress on: 18.2kit/200kit rate:3.3s/it remaining:168:48:47 elapsed:1:06:04 postfix:- (1835763:tqdm_logging.py:145)
+23:08:05.009 [I] Progress on: 18.2kit/200kit rate:4.6s/it remaining:230:45:16 elapsed:1:06:15 postfix:- (1835763:tqdm_logging.py:145)
+23:08:16.301 [I] Progress on: 18.2kit/200kit rate:3.3s/it remaining:164:35:35 elapsed:1:06:27 postfix:- (1835763:tqdm_logging.py:145)
+23:08:27.902 [I] Progress on: 18.2kit/200kit rate:2.9s/it remaining:145:59:55 elapsed:1:06:38 postfix:- (1835763:tqdm_logging.py:145)
+23:08:46.218 [I] Progress on: 18.2kit/200kit rate:5.6s/it remaining:285:19:24 elapsed:1:06:56 postfix:- (1835763:tqdm_logging.py:145)
+23:08:56.323 [I] Progress on: 18.2kit/200kit rate:4.0s/it remaining:201:14:30 elapsed:1:07:07 postfix:- (1835763:tqdm_logging.py:145)
+23:09:07.955 [I] Progress on: 18.2kit/200kit rate:3.2s/it remaining:160:19:19 elapsed:1:07:18 postfix:- (1835763:tqdm_logging.py:145)
+23:09:20.296 [I] Progress on: 18.2kit/200kit rate:3.3s/it remaining:166:26:59 elapsed:1:07:31 postfix:- (1835763:tqdm_logging.py:145)
+23:09:32.403 [I] Progress on: 18.2kit/200kit rate:4.5s/it remaining:228:58:44 elapsed:1:07:43 postfix:- (1835763:tqdm_logging.py:145)
+23:09:43.206 [I] Progress on: 18.2kit/200kit rate:3.2s/it remaining:159:13:24 elapsed:1:07:53 postfix:- (1835763:tqdm_logging.py:145)
+23:09:54.826 [I] Progress on: 18.2kit/200kit rate:2.9s/it remaining:145:42:04 elapsed:1:08:05 postfix:- (1835763:tqdm_logging.py:145)
+23:10:06.727 [I] Progress on: 18.2kit/200kit rate:3.8s/it remaining:192:28:13 elapsed:1:08:17 postfix:- (1835763:tqdm_logging.py:145)
+23:10:19.073 [I] Progress on: 18.2kit/200kit rate:3.2s/it remaining:161:18:13 elapsed:1:08:29 postfix:- (1835763:tqdm_logging.py:145)
+23:10:29.890 [I] Progress on: 18.2kit/200kit rate:2.8s/it remaining:141:50:24 elapsed:1:08:40 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@4473.509] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000089.jpg'): can't open/read file: check file path/integrity
+[ WARN:0@4444.181] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000089.jpg'): can't open/read file: check file path/integrity
+23:10:43.735 [I] Progress on: 18.2kit/200kit rate:3.5s/it remaining:178:51:02 elapsed:1:08:54 postfix:- (1835763:tqdm_logging.py:145)
+23:10:55.812 [I] Progress on: 18.2kit/200kit rate:3.1s/it remaining:156:29:50 elapsed:1:09:06 postfix:- (1835763:tqdm_logging.py:145)
+23:11:06.548 [I] Progress on: 18.2kit/200kit rate:2.8s/it remaining:139:57:03 elapsed:1:09:17 postfix:- (1835763:tqdm_logging.py:145)
+23:11:16.865 [I] Progress on: 18.2kit/200kit rate:3.4s/it remaining:171:55:12 elapsed:1:09:27 postfix:- (1835763:tqdm_logging.py:145)
+23:11:28.348 [I] Progress on: 18.2kit/200kit rate:3.5s/it remaining:176:59:09 elapsed:1:09:39 postfix:- (1835763:tqdm_logging.py:145)
+23:11:39.987 [I] Progress on: 18.2kit/200kit rate:3.1s/it remaining:154:28:19 elapsed:1:09:50 postfix:- (1835763:tqdm_logging.py:145)
+23:11:50.396 [I] Progress on: 18.2kit/200kit rate:2.7s/it remaining:137:27:28 elapsed:1:10:01 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@4561.607] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo22/left/000099.jpg'): can't open/read file: check file path/integrity
+23:12:03.377 [I] Progress on: 18.2kit/200kit rate:3.6s/it remaining:179:45:10 elapsed:1:10:14 postfix:- (1835763:tqdm_logging.py:145)
+23:12:14.936 [I] Progress on: 18.2kit/200kit rate:3.0s/it remaining:150:46:56 elapsed:1:10:25 postfix:- (1835763:tqdm_logging.py:145)
+23:12:26.344 [I] Progress on: 18.2kit/200kit rate:2.8s/it remaining:141:12:01 elapsed:1:10:37 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@4626.971] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox/Demo35/left/000092.jpg'): can't open/read file: check file path/integrity
+23:12:37.620 [I] Progress on: 18.2kit/200kit rate:3.5s/it remaining:175:28:38 elapsed:1:10:48 postfix:- (1835763:tqdm_logging.py:145)
+23:12:49.237 [I] Progress on: 18.3kit/200kit rate:3.1s/it remaining:155:37:32 elapsed:1:10:59 postfix:- (1835763:tqdm_logging.py:145)
+23:13:01.061 [I] Progress on: 18.3kit/200kit rate:2.9s/it remaining:146:31:32 elapsed:1:11:11 postfix:- (1835763:tqdm_logging.py:145)
+23:13:11.638 [I] Progress on: 18.3kit/200kit rate:3.5s/it remaining:178:00:30 elapsed:1:11:22 postfix:- (1835763:tqdm_logging.py:145)
+23:13:24.335 [I] Progress on: 18.3kit/200kit rate:3.3s/it remaining:166:48:21 elapsed:1:11:35 postfix:- (1835763:tqdm_logging.py:145)
+23:13:35.651 [I] Progress on: 18.3kit/200kit rate:3.0s/it remaining:149:29:03 elapsed:1:11:46 postfix:- (1835763:tqdm_logging.py:145)
+23:13:47.160 [I] Progress on: 18.3kit/200kit rate:3.0s/it remaining:151:41:02 elapsed:1:11:57 postfix:- (1835763:tqdm_logging.py:145)
+23:13:58.166 [I] Progress on: 18.3kit/200kit rate:3.3s/it remaining:166:14:54 elapsed:1:12:08 postfix:- (1835763:tqdm_logging.py:145)
+23:14:10.357 [I] Progress on: 18.3kit/200kit rate:3.2s/it remaining:159:10:20 elapsed:1:12:21 postfix:- (1835763:tqdm_logging.py:145)
+23:14:20.762 [I] Progress on: 18.3kit/200kit rate:2.7s/it remaining:138:36:26 elapsed:1:12:31 postfix:- (1835763:tqdm_logging.py:145)
+23:14:32.452 [I] Progress on: 18.3kit/200kit rate:3.4s/it remaining:169:55:41 elapsed:1:12:43 postfix:- (1835763:tqdm_logging.py:145)
+23:14:44.922 [I] Progress on: 18.3kit/200kit rate:3.0s/it remaining:153:54:30 elapsed:1:12:55 postfix:- (1835763:tqdm_logging.py:145)
+23:14:56.304 [I] Progress on: 18.3kit/200kit rate:2.8s/it remaining:142:07:28 elapsed:1:13:07 postfix:- (1835763:tqdm_logging.py:145)
+23:15:07.428 [I] Progress on: 18.3kit/200kit rate:3.5s/it remaining:178:26:27 elapsed:1:13:18 postfix:- (1835763:tqdm_logging.py:145)
+23:15:19.366 [I] Progress on: 18.3kit/200kit rate:3.1s/it remaining:155:46:32 elapsed:1:13:30 postfix:- (1835763:tqdm_logging.py:145)
+23:15:31.197 [I] Progress on: 18.3kit/200kit rate:2.9s/it remaining:146:46:17 elapsed:1:13:41 postfix:- (1835763:tqdm_logging.py:145)
+23:15:45.365 [I] Progress on: 18.3kit/200kit rate:3.7s/it remaining:184:39:44 elapsed:1:13:56 postfix:- (1835763:tqdm_logging.py:145)
+[ WARN:0@4795.460] global loadsave.cpp:268 findDecoder imread_('/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox/Demo38/left/000088.jpg'): can't open/read file: check file path/integrity
+23:15:57.511 [I] Progress on: 18.3kit/200kit rate:3.2s/it remaining:159:33:05 elapsed:1:14:08 postfix:- (1835763:tqdm_logging.py:145)
+23:16:09.806 [I] Progress on: 18.3kit/200kit rate:3.0s/it remaining:151:51:41 elapsed:1:14:20 postfix:- (1835763:tqdm_logging.py:145)
+23:16:23.417 [I] Progress on: 18.3kit/200kit rate:3.6s/it remaining:179:11:31 elapsed:1:14:34 postfix:- (1835763:tqdm_logging.py:145)
+23:16:35.302 [I] Progress on: 18.3kit/200kit rate:3.0s/it remaining:153:20:31 elapsed:1:14:46 postfix:- (1835763:tqdm_logging.py:145)
+23:16:46.947 [I] Progress on: 18.3kit/200kit rate:3.5s/it remaining:178:55:32 elapsed:1:14:57 postfix:- (1835763:tqdm_logging.py:145)
+23:16:57.966 [I] Progress on: 18.3kit/200kit rate:3.0s/it remaining:150:49:17 elapsed:1:15:08 postfix:- (1835763:tqdm_logging.py:145)
+23:17:08.927 [I] Progress on: 18.3kit/200kit rate:3.4s/it remaining:169:11:59 elapsed:1:15:19 postfix:- (1835763:tqdm_logging.py:145)
+23:17:21.561 [I] Progress on: 18.3kit/200kit rate:3.4s/it remaining:170:03:32 elapsed:1:15:32 postfix:- (1835763:tqdm_logging.py:145)
+23:17:32.033 [I] Progress on: 18.3kit/200kit rate:2.8s/it remaining:141:40:32 elapsed:1:15:42 postfix:- (1835763:tqdm_logging.py:145)
+23:17:43.005 [I] Progress on: 18.3kit/200kit rate:3.3s/it remaining:168:39:59 elapsed:1:15:53 postfix:- (1835763:tqdm_logging.py:145)
+23:17:54.797 [I] Progress on: 18.3kit/200kit rate:2.9s/it remaining:148:33:44 elapsed:1:16:05 postfix:- (1835763:tqdm_logging.py:145)
+23:18:07.383 [I] Progress on: 18.4kit/200kit rate:2.9s/it remaining:146:53:41 elapsed:1:16:18 postfix:- (1835763:tqdm_logging.py:145)
+23:18:18.217 [I] Progress on: 18.4kit/200kit rate:3.5s/it remaining:177:21:17 elapsed:1:16:28 postfix:- (1835763:tqdm_logging.py:145)
+23:18:30.653 [I] Progress on: 18.4kit/200kit rate:3.1s/it remaining:156:35:32 elapsed:1:16:41 postfix:- (1835763:tqdm_logging.py:145)
+23:18:43.066 [I] Progress on: 18.4kit/200kit rate:3.0s/it remaining:152:02:10 elapsed:1:16:53 postfix:- (1835763:tqdm_logging.py:145)

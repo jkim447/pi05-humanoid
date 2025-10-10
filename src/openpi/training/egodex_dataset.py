@@ -128,7 +128,7 @@ class EgoDexSeqDataset(Dataset):
 
             # ---- pick a fixed number of episodes per task ----
             # TODO: change as needed (ideally delete for training)
-            episodes_per_task = 10        # <= choose how many per task
+            episodes_per_task = 100        # <= choose how many per task
             rng = random.Random(42)      # <= set seed for reproducibility (or remove)
 
             def _task_name(ep: Episode) -> str:
@@ -144,8 +144,11 @@ class EgoDexSeqDataset(Dataset):
             # sample K per task (or all if fewer)
             picked: list[Episode] = []
             for task, eps in by_task.items():
-                rng.shuffle(eps)                 # simple random; remove if you prefer sorted order
-                picked.extend(eps[:episodes_per_task])
+                if episodes_per_task is None:
+                    picked.extend(eps)  # NEW: no cap
+                else:
+                    rng.shuffle(eps)                 # simple random; remove if you prefer sorted order
+                    picked.extend(eps[:episodes_per_task])
 
             # optional: shuffle overall, then cap with max_episodes if you also want a global limit
             # rng.shuffle(picked)

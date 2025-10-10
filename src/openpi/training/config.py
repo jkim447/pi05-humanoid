@@ -881,16 +881,21 @@ _CONFIGS = [
 
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=1000, # TODO: change as needed
-            peak_lr=2.5e-5, # default is 2.5e-5
+            peak_lr=5e-5, # default is 2.5e-5
             decay_steps=1_000_000, # TODO: change as needed
-            decay_lr=2.5e-5, # TODO: change as needed
+            decay_lr=5e-5, # TODO: change as needed
         ),
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0), # default 
         # ema_decay=0.999, # default is 0.99 if unspecified
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
-        num_train_steps=120_000, # TODO: change as needed
-        batch_size=32, # TODO: change as needed
+        num_train_steps=200_000, # TODO: change as needed
+        batch_size=256, # TODO: change as needed
+        num_workers=12
+
+        # batch_size=32, # TODO: change as needed
+        # num_workers=0
+        
         # lr_schedule=_optimizer.CosineDecaySchedule(),
         # optimizer=_optimizer.AdamW(),
         # ema_decay=0.99,

@@ -153,58 +153,58 @@ def create_torch_dataset(
         traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
         max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
         rebuild_index=False,  # TODO: choose correctly
-        load_images = False, # TODO: choose correctly # second TODO: set to true to start training
+        load_images = True, # TODO: choose correctly # second TODO: set to true to start training
         overlay = overlay)
 
     # TODO: uncomment below!
     # Lazy import to avoid hard dependency unless used
-    # from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
-    # dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
-    # galaxea_dataset = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
-    #                             chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
-    #                             # TODO: action horizon // 2 is important if interleaving left and right actions
+    from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
+    dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
+    galaxea_dataset = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
+                                chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
+                                # TODO: action horizon // 2 is important if interleaving left and right actions
 
-    # # ADD human data we've collected
-    # from openpi.training.our_human_dataset import HumanDatasetKeypointsJoints
-    # # TODO change these directories as needed
-    # dir1 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox"
-    # dir2 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox"
-    # dir3 = "/iris/projects/humanoid/hamer/keypoint_human_data_wood_inbox"
-    # custom_instruction = "place wood cube into box" # TODO double check which instruction goes with which dataset
+    # ADD human data we've collected
+    from openpi.training.our_human_dataset import HumanDatasetKeypointsJoints
+    # TODO change these directories as needed
+    dir1 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox"
+    dir2 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox"
+    dir3 = "/iris/projects/humanoid/hamer/keypoint_human_data_wood_inbox"
+    custom_instruction = "place wood cube into box" # TODO double check which instruction goes with which dataset
 
-    # ds1 = HumanDatasetKeypointsJoints(
-    #     dataset_dir=dir1,
-    #     chunk_size=action_horizon//2,
-    #     stride=1,
-    #     img_height=224,
-    #     img_width=224,
-    #     overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
-    # )
+    ds1 = HumanDatasetKeypointsJoints(
+        dataset_dir=dir1,
+        chunk_size=action_horizon//2,
+        stride=1,
+        img_height=224,
+        img_width=224,
+        overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
+    )
 
-    # ds2 = HumanDatasetKeypointsJoints(
-    #     dataset_dir=dir2,
-    #     chunk_size=action_horizon//2,
-    #     stride=1,
-    #     img_height=224,
-    #     img_width=224,
-    #     overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
-    # )
+    ds2 = HumanDatasetKeypointsJoints(
+        dataset_dir=dir2,
+        chunk_size=action_horizon//2,
+        stride=1,
+        img_height=224,
+        img_width=224,
+        overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
+    )
 
-    # ds3 = HumanDatasetKeypointsJoints(
-    #     dataset_dir=dir3,
-    #     chunk_size=action_horizon//2,
-    #     stride=1,
-    #     img_height=224,
-    #     img_width=224,
-    #     overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
-    #     custom_instruction=custom_instruction, # TODO: note I'm using custom_instruction for the wooden block
-    # )
+    ds3 = HumanDatasetKeypointsJoints(
+        dataset_dir=dir3,
+        chunk_size=action_horizon//2,
+        stride=1,
+        img_height=224,
+        img_width=224,
+        overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
+        custom_instruction=custom_instruction, # TODO: note I'm using custom_instruction for the wooden block
+    )
 
     # Concatenate them
-    # return egodex_dataset, galaxea_dataset, ds1, ds2, ds3
+    return egodex_dataset, galaxea_dataset, ds1, ds2, ds3
 
     # TODO: delete me for training1
-    return egodex_dataset #, galaxea_dataset, ds1, ds2, ds3
+    # return egodex_dataset #, galaxea_dataset, ds1, ds2, ds3
 
 
 

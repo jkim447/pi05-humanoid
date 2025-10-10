@@ -146,7 +146,7 @@ def _load_policy():
     conf     = cfg.get_config("pi05_egodex")
     # change if you want a different checkpoint
     # ckpt_dir = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/35000")
-    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed/co_training_50_demos_per_task_60k_iter/76000")
+    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/16000")
     return policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ---------- main ----------

@@ -2,11 +2,11 @@
 #SBATCH --job-name=pi05
 #SBATCH --output=pi05-%j.out
 #SBATCH --partition=iris-hi
-#SBATCH --nodelist=iris-hgx-1
+#SBATCH --nodelist=iris-hgx-2
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:6
+#SBATCH --gres=gpu:4
 #SBATCH --time=72:00:00
-#SBATCH --mem=800G                  # adjust if you need less/more
+#SBATCH --mem=1000G                  # adjust if you need less/more
 #SBATCH --cpus-per-task=64          # tune if you want more data-loader threads
 
 set -e
@@ -19,8 +19,8 @@ source .venv/bin/activate
 source set_env.sh 
 
 # run training
-srun --ntasks=1 --gpus-per-task=6 \
-  XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 \
-  uv run scripts/train.py pi05_mixed \
-    --exp-name=co_training_50_demos_per_task_6gpus \
-    --overwrite
+
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 \
+uv run scripts/train.py pi05_mixed_kp \
+    --exp-name=co_training_kp \
+    --resume
