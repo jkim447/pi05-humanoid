@@ -180,3 +180,4 @@ vis_human_policy/
 robot_vis/
 src/openpi/training/vis_samples_simple/
 core
+vis_human*/

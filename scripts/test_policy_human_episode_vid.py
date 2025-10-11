@@ -11,16 +11,16 @@ import jax.numpy as jnp
 # ---------- config you edit ----------
 ROOT_DIR   = "/iris/projects/humanoid/dataset/ego_dex"
 # Option A) set exact episode files:
-EP_H5      = "/iris/projects/humanoid/dataset/ego_dex/part3/insert_remove_bookshelf/2.hdf5"     # or leave "" to auto-find by TASK_NAME + index
-EP_MP4     = "/iris/projects/humanoid/dataset/ego_dex/part3/insert_remove_bookshelf/2.mp4"      # must match the h5
+EP_H5      = "/iris/projects/humanoid/dataset/ego_dex/part3/make_sandwich/20.hdf5"     # or leave "" to auto-find by TASK_NAME + index
+EP_MP4     = "/iris/projects/humanoid/dataset/ego_dex/part3/make_sandwich/20.mp4"      # must match the h5
 # Option B) auto-pick by task name + episode index within that task
-TASK_NAME  = "insert_remove_bookshelf"             # folder name under a part/ dir
+TASK_NAME  = "make_sandwich"             # folder name under a part/ dir
 EP_INDEX   = 0                           # 0-based within that task
 # Inference/render settings
 IMG_SIZE   = 224
 STRIDE     = 1                           # frame step for GT window building
-PROMPT     = "insert_remove_bookshelf"
-OUT_DIR    = "vis_human_policy"
+PROMPT     = "make_sandwich"
+OUT_DIR    = "vis_human_policy_make_sandwich"  # output per-frame images here
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # Camera intrinsics (use your real K)
@@ -146,7 +146,7 @@ def _load_policy():
     conf     = cfg.get_config("pi05_egodex")
     # change if you want a different checkpoint
     # ckpt_dir = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/35000")
-    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/16000")
+    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/37000")
     return policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ---------- main ----------
@@ -208,7 +208,7 @@ def main():
         # extract L/R wrist xyz from pred tokens and GT tokens
         # (token layout: even=L, odd=R; xyz at [:3] for each)
         L_pred_xyz = pred[0::2, 0:3]
-        R_pred_xyz = pred[0::2, 9:12]
+        R_pred_xyz = pred[1::2, 0:3]
 
         L_gt_xyz   = actions_tokens32[0::2, 0:3]
         R_gt_xyz   = actions_tokens32[0::2, 9:12]

@@ -220,6 +220,65 @@ class EgoDexSeqDataset(Dataset):
     def __len__(self) -> int:
         return len(self.index)
 
+    def _draw_skeleton(self, image_rgb_float: np.ndarray,
+                   uv: list[tuple[int,int] | None],
+                   names: list[str]) -> np.ndarray:
+        """
+        Draws finger chains for LEFT/RIGHT hands, plus optional knuckle->wrist links
+        if wrists are present in `names`. Returns float RGB [0,1].
+        """
+        # Build a quick name->index map for the current frame (after filtering)
+        idx = {n: i for i, n in enumerate(names)}
+
+        # Per-finger chains (knuckle -> base -> tip_base -> tip)
+        def finger_chain(prefix: str, finger: str) -> list[tuple[str, str]]:
+            return [
+                (f"{prefix}{finger}Knuckle",              f"{prefix}{finger}IntermediateBase"),
+                (f"{prefix}{finger}IntermediateBase",     f"{prefix}{finger}IntermediateTip"),
+                (f"{prefix}{finger}IntermediateTip",      f"{prefix}{finger}Tip"),
+            ]
+
+        left_fingers  = ["Thumb", "IndexFinger", "MiddleFinger", "RingFinger", "LittleFinger"]
+        right_fingers = ["Thumb", "IndexFinger", "MiddleFinger", "RingFinger", "LittleFinger"]
+
+        edges: list[tuple[int, int]] = []
+
+        # Left finger chains
+        for fgr in left_fingers:
+            for a, b in finger_chain("left", fgr):
+                if a in idx and b in idx: edges.append((idx[a], idx[b]))
+
+        # Right finger chains
+        for fgr in right_fingers:
+            for a, b in finger_chain("right", fgr):
+                if a in idx and b in idx: edges.append((idx[a], idx[b]))
+
+        # Optional wrist-to-knuckle links if wrists exist
+        for wrist, prefix in (("leftHand", "left"), ("rightHand", "right")):
+            if wrist in idx:
+                for fgr in (left_fingers if prefix=="left" else right_fingers):
+                    kn = f"{prefix}{fgr}Knuckle"
+                    if kn in idx:
+                        edges.append((idx[wrist], idx[kn]))
+
+        # Draw lines
+        H, W, _ = image_rgb_float.shape
+        img = (image_rgb_float * 255.0).astype(np.uint8)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        for i, j in edges:
+            pi, pj = uv[i], uv[j]
+            if pi is None or pj is None: 
+                continue
+            ui, vi = pi
+            uj, vj = pj
+            if (0 <= ui < W and 0 <= vi < H and 0 <= uj < W and 0 <= vj < H):
+                cv2.line(img, (ui, vi), (uj, vj), (0, 255, 0), thickness=3, lineType=cv2.LINE_AA)
+
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img.astype(np.float32) / 255.0
+
+
     def _project_pts_onto_resized(self, pts_cam_xyz: np.ndarray, K: np.ndarray, W: int, H: int) -> np.ndarray:
         """pts_cam_xyz: (M,3) in camera frame; returns integer pixel coords on resized frame."""
         # Intrinsics are for 1920x1080 per README; scale to resized (W,H)
@@ -351,6 +410,7 @@ class EgoDexSeqDataset(Dataset):
                 H0, W0 = image.shape[:2]
                 uv = self._project_pts_onto_resized(pts_cam, K, W0, H0)
                 image = self._draw_keypoints(image, uv)
+                image = self._draw_skeleton(image, uv, names)
 
 
             if self.state_format == "ego_split":
@@ -397,53 +457,53 @@ class EgoDexSeqDataset(Dataset):
 ############################################
 ############################################
 
-# import os
-# import random
-# import cv2
-# from pathlib import Path
-# import numpy as np
-# import torch
+import os
+import random
+import cv2
+from pathlib import Path
+import numpy as np
+import torch
 
-# # === configuration ===
-# root_dir = "/iris/projects/humanoid/dataset/ego_dex"   # <-- change to your dataset root
-# save_dir = Path("/iris/projects/humanoid/openpi/dataset_test_images")
-# save_dir.mkdir(exist_ok=True)
+# === configuration ===
+root_dir = "/iris/projects/humanoid/dataset/ego_dex"   # <-- change to your dataset root
+save_dir = Path("/iris/projects/humanoid/openpi/dataset_test_images")
+save_dir.mkdir(exist_ok=True)
 
-# # === create dataset ===
-# ds = EgoDexSeqDataset(
-#     root_dir=root_dir,
-#     action_horizon=5,        # example horizon
-#     image_size=(224, 224),
-#     state_format="ego",      # or "ego"
-#     window_stride=1,
-#     traj_per_task = 1,
-#     overlay=True
-# )
+# === create dataset ===
+ds = EgoDexSeqDataset(
+    root_dir=root_dir,
+    action_horizon=5,        # example horizon
+    image_size=(224, 224),
+    state_format="ego",      # or "ego"
+    window_stride=1,
+    traj_per_task = 1,
+    overlay=True
+)
 
-# print(f"Dataset length: {len(ds)} samples")
+print(f"Dataset length: {len(ds)} samples")
 
-# # === test retrieval ===
-# num_samples_to_test = 5
-# indices = random.sample(range(len(ds)), num_samples_to_test)
+# === test retrieval ===
+num_samples_to_test = 5
+indices = random.sample(range(len(ds)), num_samples_to_test)
 
-# for idx in indices:
-#     sample = ds[idx]
-#     image = sample["image"]
-#     state = sample["state"]
-#     actions = sample["actions"]
-#     task = sample["task"]
+for idx in indices:
+    sample = ds[idx]
+    image = sample["image"]
+    state = sample["state"]
+    actions = sample["actions"]
+    task = sample["task"]
 
-#     print(f"Sample {idx}:")
-#     print(f"  Image shape:   {image.shape}  dtype={image.dtype}")
-#     print(f"  State shape:   {state.shape}")
-#     print(f"  Actions shape: {actions.shape}")
-#     print(f"  Task:          {task}")
+    print(f"Sample {idx}:")
+    print(f"  Image shape:   {image.shape}  dtype={image.dtype}")
+    print(f"  State shape:   {state.shape}")
+    print(f"  Actions shape: {actions.shape}")
+    print(f"  Task:          {task}")
 
-#     # save image as RGB
-#     img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-#     img_bgr_u8 = np.clip(img_bgr * 255.0, 0, 255).astype(np.uint8)
-#     save_path = save_dir / f"sample_{idx}_{task}.png"
-#     cv2.imwrite(str(save_path), img_bgr_u8)
-#     print(f"  Saved image to {save_path}")
+    # save image as RGB
+    img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    img_bgr_u8 = np.clip(img_bgr * 255.0, 0, 255).astype(np.uint8)
+    save_path = save_dir / f"sample_{idx}_{task}.png"
+    cv2.imwrite(str(save_path), img_bgr_u8)
+    print(f"  Saved image to {save_path}")
 
-# print(f"\nDone! Check images in {save_dir.resolve()}")
+print(f"\nDone! Check images in {save_dir.resolve()}")

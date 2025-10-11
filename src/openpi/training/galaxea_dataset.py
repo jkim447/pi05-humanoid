@@ -145,7 +145,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         horizon = self.chunk_size * self.stride
         self.index = []
         for ep_id, (_, N) in enumerate(self.episodes):
-            print("going thru:", ep_id)
+            # print("going thru:", ep_id)
             last_start = N - horizon
             if last_start < 0:
                 continue
@@ -196,12 +196,12 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         # draw lines (clipped to image)
         rect = (0, 0, w, h)
         # TODO: uncomment me for the line connections!
-        # for a, b in self.right_connections:
-        #     if a in proj and b in proj:
-        #         pt1, pt2 = proj[a][:2], proj[b][:2]
-        #         ok, p1, p2 = cv2.clipLine(rect, pt1, pt2)
-        #         if ok:
-        #             cv2.line(img_bgr, p1, p2, (200, 200, 0), 2)   # pale yellow
+        for a, b in self.right_connections:
+            if a in proj and b in proj:
+                pt1, pt2 = proj[a][:2], proj[b][:2]
+                ok, p1, p2 = cv2.clipLine(rect, pt1, pt2)
+                if ok:
+                    cv2.line(img_bgr, p1, p2, (200, 200, 0), 2)   # pale yellow
         return img_bgr
 
 

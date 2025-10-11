@@ -2,6 +2,7 @@ import dataclasses
 import enum
 import logging
 import socket
+import numpy as np
 
 import tyro
 
@@ -108,11 +109,24 @@ def main(args: Args) -> None:
     local_ip = socket.gethostbyname(hostname)
     logging.info("Creating server (host: %s, ip: %s)", hostname, local_ip)
 
+    logging.info("Warming up policy JIT...")
+    dummy = {
+        "image": np.zeros((224, 224, 3), dtype=np.uint8),
+        "wrist_image": np.zeros((224, 224, 3), dtype=np.uint8),
+        "state": np.zeros((32,), dtype=np.float32),
+        "prompt": "warmup",
+    }
+    _ = policy.infer(dummy)
+    logging.info("Warm-up done.")
+
     server = websocket_policy_server.WebsocketPolicyServer(
         policy=policy,
         host="0.0.0.0",
         port=args.port,
         metadata=policy_metadata,
+        # ping_interval=120,    # increase keepalive interval
+        # ping_timeout=120,     # allow longer ping responses
+        # close_timeout=120,    # allow longer close wait
     )
     server.serve_forever()
 
