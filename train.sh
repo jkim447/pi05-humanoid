@@ -5,7 +5,7 @@
 #SBATCH --nodelist=iris-hgx-2
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=72:00:00
+#SBATCH --time=96:00:00
 #SBATCH --mem=1000G                  # adjust if you need less/more
 #SBATCH --cpus-per-task=64          # tune if you want more data-loader threads
 
