@@ -9,6 +9,17 @@ import torch
 import pandas as pd
 from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
+from openpi.training.hand_keypoints_config import JOINT_COLOR_BGR, LEFT_FINGERS, RIGHT_FINGERS
+
+# MANO right-hand semantic names by index (0..20)
+MANO_RIGHT_NAMES = [
+    "rightHand",                         # 0 wrist
+    "rightThumbKnuckle","rightThumbIntermediateBase","rightThumbIntermediateTip","rightThumbTip",  # 1..4
+    "rightIndexFingerKnuckle","rightIndexFingerIntermediateBase","rightIndexFingerIntermediateTip","rightIndexFingerTip",  # 5..8
+    "rightMiddleFingerKnuckle","rightMiddleFingerIntermediateBase","rightMiddleFingerIntermediateTip","rightMiddleFingerTip",  # 9..12
+    "rightRingFingerKnuckle","rightRingFingerIntermediateBase","rightRingFingerIntermediateTip","rightRingFingerTip",  # 13..16
+    "rightLittleFingerKnuckle","rightLittleFingerIntermediateBase","rightLittleFingerIntermediateTip","rightLittleFingerTip",  # 17..20
+]
 
 # --------- Camera intrinsics (raw resolution) ---------
 K_LEFT = np.array([[730.2571411132812, 0.0, 637.2598876953125],
@@ -23,6 +34,63 @@ T_BASE_TO_CAM_LEFT = np.linalg.inv(np.array([
     [ 0., 0., 0., 1. ]
 ], dtype=np.float64))
 R_B2C = T_BASE_TO_CAM_LEFT[:3, :3]
+
+def draw_skeleton_occlusion_aware(
+    image_rgb_float: np.ndarray,
+    names: list[str],
+    uv: list[tuple[int,int] | None],
+    z: np.ndarray,
+    edges_by_name: list[tuple[str,str]],
+    color_of: dict[str, tuple[int,int,int]],
+    *,
+    pt_radius: int = 6,
+    line_thickness: int = 3,
+    edge_segments: int = 12,
+) -> np.ndarray:
+    """Global depth sort of edge segments + points (far→near)."""
+    H, W = image_rgb_float.shape[:2]
+    name_to_idx = {n:i for i,n in enumerate(names)}
+    prims = []
+
+    # Edges -> segments
+    for a, b in edges_by_name:
+        if a not in name_to_idx or b not in name_to_idx:
+            continue
+        ia, ib = name_to_idx[a], name_to_idx[b]
+        pa, pb = uv[ia], uv[ib]
+        if (pa is None) or (pb is None):
+            continue
+        ua, va = pa; ub, vb = pb
+        za, zb = float(z[ia]), float(z[ib])
+        for k in range(edge_segments):
+            t0 = k / edge_segments
+            t1 = (k+1) / edge_segments
+            u0 = int(round(ua*(1-t0) + ub*t0)); v0 = int(round(va*(1-t0) + vb*t0))
+            u1 = int(round(ua*(1-t1) + ub*t1)); v1 = int(round(va*(1-t1) + vb*t1))
+            if not (0 <= u0 < W and 0 <= v0 < H and 0 <= u1 < W and 0 <= v1 < H):
+                continue
+            zmid = za*(1-(t0+t1)/2) + zb*((t0+t1)/2)
+            col  = color_of.get(b, (210,210,210))
+            prims.append(("edge", zmid, (u0,v0), (u1,v1), col))
+
+    # Points
+    for i, p in enumerate(uv):
+        if p is None: continue
+        u, v = p
+        if 0 <= u < W and 0 <= v < H:
+            prims.append(("pt", float(z[i]), (u,v), color_of.get(names[i], (210,210,210))))
+
+    prims.sort(key=lambda x: -x[1])  # far→near
+    img_bgr = cv2.cvtColor((image_rgb_float*255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+    for prim in prims:
+        if prim[0] == "edge":
+            _, _, p0, p1, col = prim
+            cv2.line(img_bgr, p0, p1, col, line_thickness, cv2.LINE_AA)
+        else:
+            _, _, (u,v), col = prim
+            cv2.circle(img_bgr, (u,v), pt_radius, col, -1, lineType=cv2.LINE_AA)
+    return cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
+
 
 class HumanDatasetKeypointsJoints(Dataset):
     """
@@ -150,6 +218,7 @@ class HumanDatasetKeypointsJoints(Dataset):
     @staticmethod
     def _to_rgb_float_and_resize(bgr_img: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
         rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+        # TODO: uncomment me!
         rgb = cv2.resize(rgb, (out_w, out_h))
         return (rgb.astype(np.float32) / 255.0)
 
@@ -168,31 +237,41 @@ class HumanDatasetKeypointsJoints(Dataset):
         return np.stack(pts, axis=0).astype(np.float32)  # (21, 3)
 
     def _draw_hand_skeleton(self, img_bgr: np.ndarray, kps_cam: np.ndarray,
-                            raw_h: int, raw_w: int, out_h: int, out_w: int) -> np.ndarray:
+                        raw_h: int, raw_w: int, out_h: int, out_w: int) -> np.ndarray:
         """
-        Draw MANO keypoints + skeleton on BGR image (uint8).
-        Uses scaled intrinsics for resized image coordinates.
+        Occlusion-aware drawing of MANO right-hand keypoints.
+        Draws edges + joints in one global depth-sorted pass.
         """
-        # Project all points
-        proj = []
-        for (x, y, z) in kps_cam:
-            u, v = self._project_scaled(K_LEFT, (x, y, z), raw_h, raw_w, out_h, out_w)
-            proj.append((u, v))
-        # Draw bones (lines)
-        for i, j in self.mano_edges:
-            u1, v1 = proj[i]; u2, v2 = proj[j]
-            if (0 <= u1 < out_w and 0 <= v1 < out_h and
-                0 <= u2 < out_w and 0 <= v2 < out_h):
-                cv2.line(img_bgr, (u1, v1), (u2, v2), (0, 255, 255), 2, cv2.LINE_AA)  # yellow lines
+        # 1) Project 3D → 2D (onto resized frame)
+        names = MANO_RIGHT_NAMES
+        uv, z = [], []
+        for (x, y, zc) in kps_cam:
+            u, v = self._project_scaled(K_LEFT, (x, y, zc), raw_h, raw_w, out_h, out_w)
+            uv.append((u, v))
+            z.append(zc)
+        z = np.array(z, dtype=np.float32)
 
-        # Draw joints (circles)
-        for idx, (u, v) in enumerate(proj):
-            if 0 <= u < out_w and 0 <= v < out_h:
-                radius = 4 if idx != 0 else 6
-                color  = (255, 0, 0) if idx in (4, 8, 12, 16, 20) else (0, 128, 255)  # tips red(ish), others blue/orange
-                cv2.circle(img_bgr, (u, v), radius, color, 2, lineType=cv2.LINE_AA)
+        # 2) Build edges by name (using MANO index mapping)
+        edges_by_name = [(names[i], names[j]) for (i, j) in self.mano_edges if i < len(names) and j < len(names)]
 
-        return img_bgr
+        # 3) Assign per-joint colors
+        fallback = (210, 210, 210)
+        color_of = {n: JOINT_COLOR_BGR.get(n, fallback) for n in names}
+
+        # 4) Run global occlusion-aware draw
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
+        img_rgb = draw_skeleton_occlusion_aware(
+            img_rgb,
+            names=names,
+            uv=uv,
+            z=z,
+            edges_by_name=edges_by_name,
+            color_of=color_of,
+            pt_radius=6,
+            line_thickness=3,
+            edge_segments=12,
+        )
+        return cv2.cvtColor((img_rgb*255).astype(np.uint8), cv2.COLOR_RGB2BGR)
 
 
     def _row_to_action(self, row):
@@ -267,41 +346,12 @@ class HumanDatasetKeypointsJoints(Dataset):
 
         if self.overlay:
             vis_raw = bgr_raw.copy()
-
-            # choose a thickness that looks good at raw resolution (scales with width)
-            base = max(raw_w, raw_h)
-            scale = base / 1280.0  # baseline for ~1280px wide images
-            line_thickness = 6
-            joint_radius   = 9
-            tip_radius     = 9
-
-            # get all 21 keypoints for the first frame in window (absolute)
-            kps_cam = self._row_keypoints_cam(df.iloc[t0])  # (21, 3)
-
-            # project and draw AT RAW SIZE using *unscaled* intrinsics (since we are on the raw image)
-            proj = []
-            for (x, y, z) in kps_cam:
-                u, v = self._project_scaled(K_LEFT, (x, y, z), raw_h, raw_w, raw_h, raw_w)  # out==in -> no scaling
-                proj.append((u, v))
-
-            # bones
-            for i, j in self.mano_edges:
-                u1, v1 = proj[i]; u2, v2 = proj[j]
-                if (0 <= u1 < raw_w and 0 <= v1 < raw_h and 0 <= u2 < raw_w and 0 <= v2 < raw_h):
-                    cv2.line(vis_raw, (u1, v1), (u2, v2), (0, 255, 255), line_thickness, cv2.LINE_AA)
-
-            # joints
-            for idx, (u, v) in enumerate(proj):
-                if 0 <= u < raw_w and 0 <= v < raw_h:
-                    r = tip_radius if idx in (4, 8, 12, 16, 20) else joint_radius
-                    color = (255, 0, 0) if idx in (4, 8, 12, 16, 20) else (0, 128, 255)
-                    cv2.circle(vis_raw, (u, v), r, color, -1, lineType=cv2.LINE_AA)
-
-            # now resize ONCE for model input
+            kps_cam = self._row_keypoints_cam(df.iloc[t0])
+            vis_raw = self._draw_hand_skeleton(vis_raw, kps_cam, raw_h, raw_w, raw_h, raw_w)
             img = self._to_rgb_float_and_resize(vis_raw, self.img_w, self.img_h)
         else:
-            # no overlay: just convert+resize the raw frame
             img = self._to_rgb_float_and_resize(bgr_raw, self.img_w, self.img_h)
+
 
 
         return {
@@ -313,74 +363,74 @@ class HumanDatasetKeypointsJoints(Dataset):
         }
 
 
-# test_human_dataset_simple.py
-import os
-import cv2
-import torch
-from torch.utils.data import DataLoader
+# # test_human_dataset_simple.py
+# import os
+# import cv2
+# import torch
+# from torch.utils.data import DataLoader
 
-# import the dataset class from wherever you saved it
-# from my_datasets import HumanDatasetKeypointsJoints_Simple
-# from human_dataset_simple import HumanDatasetKeypointsJoints_Simple  # <-- adjust path/name
+# # import the dataset class from wherever you saved it
+# # from my_datasets import HumanDatasetKeypointsJoints_Simple
+# # from human_dataset_simple import HumanDatasetKeypointsJoints_Simple  # <-- adjust path/name
 
-def _ensure_dir(d):
-    if not os.path.exists(d):
-        os.makedirs(d, exist_ok=True)
+# def _ensure_dir(d):
+#     if not os.path.exists(d):
+#         os.makedirs(d, exist_ok=True)
 
-def save_rgb_image(rgb_tensor_or_array, out_path):
-    """
-    rgb_tensor_or_array: (H, W, 3) in [0,1], torch.Tensor or np.ndarray
-    Saves as JPG using OpenCV (converts RGB->BGR).
-    """
-    if isinstance(rgb_tensor_or_array, torch.Tensor):
-        img = rgb_tensor_or_array.detach().cpu().numpy()
-    else:
-        img = rgb_tensor_or_array
-    img = (img.clip(0, 1) * 255.0).astype("uint8")
-    bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(out_path, bgr)
+# def save_rgb_image(rgb_tensor_or_array, out_path):
+#     """
+#     rgb_tensor_or_array: (H, W, 3) in [0,1], torch.Tensor or np.ndarray
+#     Saves as JPG using OpenCV (converts RGB->BGR).
+#     """
+#     if isinstance(rgb_tensor_or_array, torch.Tensor):
+#         img = rgb_tensor_or_array.detach().cpu().numpy()
+#     else:
+#         img = rgb_tensor_or_array
+#     img = (img.clip(0, 1) * 255.0).astype("uint8")
+#     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+#     cv2.imwrite(out_path, bgr)
 
-def main():
-    ds = HumanDatasetKeypointsJoints(
-        dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
-        chunk_size=20,
-        stride=2,
-        img_height=224,
-        img_width=224,
-        overlay=True,   # draws wrist + 5 tips on the resized left image
-    )
+# def main():
+#     ds = HumanDatasetKeypointsJoints(
+#         dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
+#         chunk_size=20,
+#         stride=2,
+#         img_height=224,
+#         img_width=224,
+#         overlay=True,   # draws wrist + 5 tips on the resized left image
+#     )
 
-    loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
+#     loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
 
-    out_dir = "vis_samples_simple"
-    _ensure_dir(out_dir)
+#     out_dir = "vis_samples_simple"
+#     _ensure_dir(out_dir)
 
-    for i, batch in enumerate(loader):
-        # batch is a dict with:
-        #   image:   (B, H, W, 3) float32 in [0,1]
-        #   state:   (B, 44)
-        #   actions: (B, 2*chunk_size, 44)
-        #   task:    list[str] of length B
-        image   = batch["image"][0]      # (H, W, 3)
-        state   = batch["state"][0]      # (44,)
-        actions = batch["actions"][0]    # (2*chunk, 44)
+#     for i, batch in enumerate(loader):
+#         # batch is a dict with:
+#         #   image:   (B, H, W, 3) float32 in [0,1]
+#         #   state:   (B, 44)
+#         #   actions: (B, 2*chunk_size, 44)
+#         #   task:    list[str] of length B
+#         image   = batch["image"][0]      # (H, W, 3)
+#         state   = batch["state"][0]      # (44,)
+#         actions = batch["actions"][0]    # (2*chunk, 44)
 
-        out_img = os.path.join(out_dir, f"sample_{i:02d}.jpg")
-        save_rgb_image(image, out_img)
+#         out_img = os.path.join(out_dir, f"sample_{i:02d}.jpg")
+#         save_rgb_image(image, out_img)
 
-        # quick shape + small value checks
-        print(f"[{i}] saved:", out_img)
-        print("   state:",   tuple(state.shape))
-        print("   actions:", tuple(actions.shape))
-        # show first few dims for a quick glance
-        with torch.no_grad():
-            s_np = state.detach().cpu().numpy()
-            a_np = actions.detach().cpu().numpy()
-        print("   state[:8]:", s_np[:8])
-        print("   actions[1, :8] (first right-hand token):", a_np[1, :8])
+#         # quick shape + small value checks
+#         print(f"[{i}] saved:", out_img)
+#         print("   state:",   tuple(state.shape))
+#         print("   actions:", tuple(actions.shape))
+#         # show first few dims for a quick glance
+#         with torch.no_grad():
+#             s_np = state.detach().cpu().numpy()
+#             a_np = actions.detach().cpu().numpy()
+#         print("   state[:8]:", s_np[:8])
+#         print("   actions[1, :8] (first right-hand token):", a_np[1, :8])
 
-        if i >= 4:  # first 5 samples only
-            break
+#         if i >= 10:  # first 5 samples only
+#             break
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

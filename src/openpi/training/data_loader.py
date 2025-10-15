@@ -14,10 +14,55 @@ import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
 import openpi.transforms as _transforms
-from torch.utils.data import ConcatDataset, WeightedRandomSampler
+from torch.utils.data import ConcatDataset, WeightedRandomSampler, Sampler
 
 
 T_co = TypeVar("T_co", covariant=True)
+
+class MixtureSampler(Sampler[int]):
+    def __init__(self, lengths, probs, num_samples, generator=None):
+        """
+        lengths: list[int]   # lengths per sub-dataset in ConcatDataset order
+        probs:   list[float] # target per-dataset probabilities; need not sum exactly to 1
+        num_samples: int     # draws per epoch
+        """
+        self.lengths = torch.tensor(lengths, dtype=torch.long)
+        self.cum = torch.tensor([0] + list(np.cumsum(lengths)), dtype=torch.long)
+        p = torch.tensor(probs, dtype=torch.float)
+        self.probs = p / p.sum()
+        self.num_samples = int(num_samples)
+        self.gen = generator or torch.Generator()
+
+    def __iter__(self):
+        # probs/lengths should live on CPU for the main-process sampler
+        probs_cpu   = self.probs.float().cpu()
+        lengths_cpu = self.lengths.cpu()
+        cum_cpu     = self.cum.cpu()
+
+        for _ in range(self.num_samples):
+            # pick which dataset k to sample from
+            k = int(torch.multinomial(
+                probs_cpu, 1, replacement=True, generator=self.gen
+            ).item())
+
+            n_k = int(lengths_cpu[k].item())
+            if n_k <= 0:
+                # if a dataset is empty, resample k
+                # (fast path; extremely rare unless a dataset is length 0)
+                while n_k <= 0:
+                    k = int(torch.multinomial(
+                        probs_cpu, 1, replacement=True, generator=self.gen
+                    ).item())
+                    n_k = int(lengths_cpu[k].item())
+
+            # sample local index j in [0, n_k)
+            j = int(torch.randint(n_k, (1,), generator=self.gen).item())
+
+            # global index in ConcatDataset
+            yield int(cum_cpu[k].item() + j)
+
+    def __len__(self):
+        return self.num_samples
 
 class Dataset(Protocol[T_co]):
     """Interface for a dataset with random access."""
@@ -423,10 +468,17 @@ def create_torch_data_loader(
         local_batch_size = batch_size // jax.process_count()
 
     # TODO: we are overwriting the sampler above, need to fix this
-    sampler = WeightedRandomSampler(
-        weights=weights,
-        num_samples=epoch_samples,  # controls epoch length
-        replacement=True,           # enables true sampling by weights
+    # sampler = WeightedRandomSampler(
+    #     weights=weights,
+    #     num_samples=epoch_samples,  # controls epoch length
+    #     replacement=True,           # enables true sampling by weights
+    # )
+
+    sampler = MixtureSampler(
+        lengths=lengths,
+        probs=pks,                 # your target_p values in the same order as lengths
+        num_samples=epoch_samples,
+        generator=torch.Generator().manual_seed(seed),
     )
 
     logging.info(f"local_batch_size: {local_batch_size}")

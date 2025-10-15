@@ -1,6 +1,6 @@
 """
 usage:
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_mixed --exp-name=test_multidataset --overwrite
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_mixed_kp --exp-name=test_multidataset --overwrite
 
 To run cluster command:
 

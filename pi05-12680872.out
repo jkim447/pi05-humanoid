@@ -1,0 +1,110 @@
+→ about to import openpi.training.checkpoints
+CHECKPOINTS: start import
+CHECKPOINTS: importing orbax...
+CHECKPOINTS: orbax imported
+✓ imported checkpoints
+13:31:12.335 [I] Running on: iris-hgx-2.stanford.edu                                              (1473692:train.py:219)
+INFO:2025-10-13 13:31:15,125:jax._src.xla_bridge:925: Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
+13:31:15.125 [I] Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig' (1473692:xla_bridge.py:925)
+INFO:2025-10-13 13:31:15,127:jax._src.xla_bridge:925: Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory
+13:31:15.127 [I] Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory (1473692:xla_bridge.py:925)
+13:31:17.135 [I] Created BasePyTreeCheckpointHandler: use_ocdbt=True, use_zarr3=False, pytree_metadata_options=PyTreeMetadataOptions(support_rich_types=False), array_metadata_store=<orbax.checkpoint._src.metadata.array_metadata_store.Store object at 0x15438b944c10> (1473692:base_pytree_checkpoint_handler.py:334)
+13:31:17.135 [I] Created BasePyTreeCheckpointHandler: use_ocdbt=True, use_zarr3=False, pytree_metadata_options=PyTreeMetadataOptions(support_rich_types=False), array_metadata_store=<orbax.checkpoint._src.metadata.array_metadata_store.Store object at 0x15438b944c10> (1473692:base_pytree_checkpoint_handler.py:334)
+13:31:17.135 [I] [thread=MainThread] Failed to get flag value for EXPERIMENTAL_ORBAX_USE_DISTRIBUTED_PROCESS_ID. (1473692:multihost.py:390)
+13:31:17.135 [I] [process=0][thread=MainThread] CheckpointManager init: checkpointers=None, item_names=None, item_handlers={'assets': <openpi.training.checkpoints.CallbackHandler object at 0x15420fe47210>, 'train_state': <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15420fe44d10>, 'params': <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15421ba52090>}, handler_registry=None (1473692:checkpoint_manager.py:620)
+13:31:17.136 [I] Deferred registration for item: "assets". Adding handler `<openpi.training.checkpoints.CallbackHandler object at 0x15420fe47210>` for item "assets" and save args `<class 'openpi.training.checkpoints.CallbackSave'>` and restore args `<class 'openpi.training.checkpoints.CallbackRestore'>` to `_handler_registry`. (1473692:composite_checkpoint_handler.py:234)
+13:31:17.136 [I] Deferred registration for item: "train_state". Adding handler `<orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15420fe44d10>` for item "train_state" and save args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>` and restore args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>` to `_handler_registry`. (1473692:composite_checkpoint_handler.py:234)
+13:31:17.136 [I] Deferred registration for item: "params". Adding handler `<orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15421ba52090>` for item "params" and save args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>` and restore args `<class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>` to `_handler_registry`. (1473692:composite_checkpoint_handler.py:234)
+13:31:17.136 [I] Deferred registration for item: "metrics". Adding handler `<orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonCheckpointHandler object at 0x154210034990>` for item "metrics" and save args `<class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonSaveArgs'>` and restore args `<class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonRestoreArgs'>` to `_handler_registry`. (1473692:composite_checkpoint_handler.py:234)
+13:31:17.136 [I] Initialized registry DefaultCheckpointHandlerRegistry({('assets', <class 'openpi.training.checkpoints.CallbackSave'>): <openpi.training.checkpoints.CallbackHandler object at 0x15420fe47210>, ('assets', <class 'openpi.training.checkpoints.CallbackRestore'>): <openpi.training.checkpoints.CallbackHandler object at 0x15420fe47210>, ('train_state', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15420fe44d10>, ('train_state', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15420fe44d10>, ('params', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeSaveArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15421ba52090>, ('params', <class 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeRestoreArgs'>): <orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler object at 0x15421ba52090>, ('metrics', <class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonSaveArgs'>): <orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonCheckpointHandler object at 0x154210034990>, ('metrics', <class 'orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonRestoreArgs'>): <orbax.checkpoint._src.handlers.json_checkpoint_handler.JsonCheckpointHandler object at 0x154210034990>}). (1473692:composite_checkpoint_handler.py:502)
+13:31:17.136 [I] orbax-checkpoint version: 0.11.13                                                (1473692:abstract_checkpointer.py:35)
+13:31:17.136 [I] [process=0][thread=MainThread] Using barrier_sync_fn: <function get_barrier_sync_fn.<locals>.<lambda> at 0x1542100279c0> timeout: 7200 secs and primary_host=0 for async checkpoint writes (1473692:async_checkpointer.py:170)
+13:31:17.141 [I] Read Metadata={'item_handlers': {'assets': 'openpi.training.checkpoints.CallbackHandler', 'params': 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler', 'train_state': 'orbax.checkpoint._src.handlers.pytree_checkpoint_handler.PyTreeCheckpointHandler'}, 'metrics': {}, 'performance_metrics': {}, 'init_timestamp_nsecs': 1760357591363289345, 'commit_timestamp_nsecs': 1760357660366403004, 'custom_metadata': {}} from /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/95000/_CHECKPOINT_METADATA (1473692:checkpoint.py:226)
+13:31:17.143 [W] Missing metrics for step 95000                                                   (1473692:checkpoint_manager.py:1654)
+13:31:17.143 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/95000/metrics/metrics not found. (1473692:checkpoint_manager.py:1655)
+13:31:17.145 [W] Missing metrics for step 100000                                                  (1473692:checkpoint_manager.py:1654)
+13:31:17.146 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/100000/metrics/metrics not found. (1473692:checkpoint_manager.py:1655)
+13:31:17.147 [W] Missing metrics for step 101000                                                  (1473692:checkpoint_manager.py:1654)
+13:31:17.147 [E] File /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/101000/metrics/metrics not found. (1473692:checkpoint_manager.py:1655)
+13:31:17.148 [I] Found 3 checkpoint steps in /iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp (1473692:checkpoint_manager.py:1701)
+13:31:17.148 [I] [process=0][thread=MainThread] CheckpointManager created,  primary_host=0, CheckpointManagerOptions=CheckpointManagerOptions(save_interval_steps=1, max_to_keep=1, keep_time_interval=None, keep_period=5000, should_keep_fn=None, best_fn=None, best_mode='max', keep_checkpoints_without_metrics=True, step_prefix=None, step_format_fixed_length=None, step_name_format=None, create=False, cleanup_tmp_directories=False, save_on_steps=frozenset(), single_host_load_and_broadcast=False, todelete_subdir=None, enable_background_delete=False, read_only=False, enable_async_checkpointing=True, async_options=AsyncOptions(timeout_secs=7200, barrier_sync_fn=None, post_finalization_callback=None, create_directories_asynchronously=True), multiprocessing_options=MultiprocessingOptions(primary_host=0, active_processes=None, barrier_sync_key_prefix=None), should_save_fn=None, file_options=FileOptions(path_permission_mode=None), save_root_metadata=True, temporary_path_class=None, save_decision_policy=None, prevent_write_metrics=False), root_directory=/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp: <orbax.checkpoint.checkpoint_manager.CheckpointManager object at 0x15420fe45fd0> (1473692:checkpoint_manager.py:801)
+wandb: Currently logged in as: jkim2718 (tmp_) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.11
+wandb: Run data is saved locally in /iris/projects/humanoid/openpi/wandb/run-20251013_133117-w745ubb9
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Resuming run co_training_kp
+wandb: ⭐️ View project at https://wandb.ai/tmp_/openpi
+wandb: 🚀 View run at https://wandb.ai/tmp_/openpi/runs/w745ubb9
+13:31:18.993 [I] Loaded norm stats from /iris/projects/humanoid/openpi/assets/pi05_mixed_kp/egodex (1473692:config.py:196)
+13:31:19.059 [I] Loaded norm stats from /iris/projects/humanoid/openpi/assets/pi05_mixed_kp/galaxea (1473692:config.py:196)
+13:31:19.060 [I] data_config: DataConfig(repo_id='egodex', asset_id='egodex', norm_stats={'state': NormStats(mean=array([-0.06352157,  0.14227782,  0.26881284,  0.45910421, -0.46645457,
+        0.53958315,  0.54299891,  0.56824952,  0.07262427,  0.03382738,
+        0.11007239,  0.31023157,  0.0362317 ,  0.09819902,  0.3401463 ,
+        0.03087626,  0.10652699,  0.34842902,  0.01864991,  0.11494368,
+        0.35399306, -0.00058273,  0.12304314,  0.3555111 ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ]), std=array([0.07190879, 0.10670202, 0.08256222, 0.29230917, 0.31026933,
+       0.31429699, 0.34765774, 0.33940205, 0.37538123, 0.08377123,
+       0.12210529, 0.11360677, 0.09180626, 0.1306383 , 0.11922993,
+       0.09474635, 0.12915812, 0.11990201, 0.09582409, 0.12804642,
+       0.11763563, 0.09487739, 0.12646796, 0.11217478, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ]), q01=array([-0.27034635, -0.07647864,  0.03055606, -0.33838078, -0.94783741,
+       -0.57528457, -0.44296975, -0.41523846, -0.94008418, -0.21582002,
+       -0.1176015 , -0.05976527, -0.23113335, -0.12937861, -0.07554106,
+       -0.24252958, -0.1235436 , -0.04075389, -0.25843105, -0.11811677,
+       -0.03189126, -0.27353196, -0.11022416, -0.02136359,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ]), q99=array([0.13867276, 0.50470338, 0.41339865, 0.98431844, 0.46279904,
+       0.95772349, 0.99254985, 0.99761957, 0.79665535, 0.25119491,
+       0.51550516, 0.50615946, 0.26562098, 0.55508075, 0.54399444,
+       0.25611439, 0.57716543, 0.55521671, 0.24894364, 0.58905364,
+       0.55396963, 0.22701829, 0.59530617, 0.54274013, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ])), 'actions': NormStats(mean=array([ 1.34488389e-01, -2.59952918e-02, -7.16139190e-03, -1.25565633e-01,
+        5.38062096e-01, -5.72433770e-01,  3.66573781e-02, -5.17637730e-01,
+       -1.78506628e-01,  4.81618643e-02, -3.38251740e-02,  7.11444113e-03,
+        5.00352383e-02, -3.37209441e-02,  1.94738130e-03,  5.62238172e-02,
+       -3.18916366e-02, -3.50678951e-04,  6.85387403e-02, -3.07752751e-02,
+       -1.86630758e-03,  8.62058178e-02, -3.07863262e-02, -3.27611575e-03,
+        0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+        0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00]), std=array([0.15321214, 0.08699047, 0.06156299, 0.31650251, 0.61812776,
+       0.65788645, 0.33277258, 0.64753735, 0.41942361, 0.1017795 ,
+       0.10443205, 0.08440314, 0.10877599, 0.11105206, 0.08926608,
+       0.11413808, 0.10899913, 0.08921903, 0.12159168, 0.10656328,
+       0.08624493, 0.13174999, 0.10411748, 0.08155642, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ]), q01=array([-0.06119754, -0.37902792, -0.18278457, -1.11198498, -0.29022322,
+       -1.82126504, -0.82518657, -1.84812165, -1.31448051, -0.13242609,
+       -0.47274741, -0.21318378, -0.14814817, -0.49318858, -0.22772175,
+       -0.14227464, -0.47702141, -0.23286197, -0.1293131 , -0.47197254,
+       -0.22961695, -0.10865846, -0.46675156, -0.22081739,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ]), q99=array([0.54428882, 0.15796359, 0.19863284, 0.60229777, 1.76254622,
+       0.32061496, 1.13273371, 0.48516809, 0.81388001, 0.42989835,
+       0.15756767, 0.3299699 , 0.45798016, 0.17149756, 0.34318458,
+       0.47622021, 0.17220992, 0.34137696, 0.50346487, 0.17173861,
+       0.33246984, 0.53385237, 0.16726751, 0.3107401 , 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'image': 'image', 'state': 'state', 'actions': 'actions', 'prompt': 'task'})], outputs=()), data_transforms=Group(inputs=(GalaxeaInputs(action_dim=32, model_type=<ModelType.PI05: 'pi05'>), DeltaActions(mask=(True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True)), GalaxeaOutputs(action_dim=32))), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt=None), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x15420fcb8810>, discrete_state_input=True), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=True, action_sequence_keys=('actions',), prompt_from_task=True, rlds_data_dir=None, action_space=None, filter_dict_path=None) (1473692:data_loader.py:303)
+Traceback (most recent call last):
+  File "/iris/projects/humanoid/openpi/scripts/train.py", line 294, in <module>
+    main(_config.cli())
+  File "/iris/projects/humanoid/openpi/scripts/train.py", line 238, in main
+    data_loader = _data_loader.create_data_loader(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/iris/projects/humanoid/openpi/src/openpi/training/data_loader.py", line 316, in create_data_loader
+    return create_torch_data_loader(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/iris/projects/humanoid/openpi/src/openpi/training/data_loader.py", line 364, in create_torch_data_loader
+    egodex_dataset, galaxea_dataset, ds1, ds2, ds3 = create_torch_dataset(data_config, action_horizon, model_config)
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/iris/projects/humanoid/openpi/src/openpi/training/data_loader.py", line 144, in create_torch_dataset
+    from openpi.training.egodex_dataset import EgoDexSeqDataset
+  File "/iris/projects/humanoid/openpi/src/openpi/training/egodex_dataset.py", line 534
+    "state":   (D,) float32  — state at start frame,
+                             ^
+SyntaxError: invalid character '—' (U+2014)
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mco_training_kp[0m at: [34mhttps://wandb.ai/tmp_/openpi/runs/w745ubb9[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20251013_133117-w745ubb9/logs[0m
