@@ -18,6 +18,16 @@ if not hasattr(np, "float"):
 from urdfpy import URDF
 from openpi.training.hand_keypoints_config import JOINT_COLOR_BGR
 
+def scale_K(K, new_W, new_H, orig_W=1280, orig_H=720):
+    scale_x = new_W / orig_W
+    scale_y = new_H / orig_H
+    K_scaled = K.copy()
+    K_scaled[0,0] *= scale_x   # fx
+    K_scaled[1,1] *= scale_y   # fy
+    K_scaled[0,2] *= scale_x   # cx
+    K_scaled[1,2] *= scale_y   # cy
+    return K_scaled
+
 # Robot link -> MANO right-hand semantic name (used only for colors)
 ROBOT_TO_MANO = {
     # thumb
@@ -50,6 +60,21 @@ FINGERS_ROBOT = {
     "RingFinger":  ["rl_dg_4_2","rl_dg_4_3","rl_dg_4_4","rl_dg_4_tip"],
     "LittleFinger":["rl_dg_5_2","rl_dg_5_3","rl_dg_5_4","rl_dg_5_tip"],
 }
+
+# --- Left & Right hand equivalents for overlay ---
+WRIST_R = "rl_dg_base"
+WRIST_L = "ll_dg_base"
+
+FINGERS_ROBOT_R = FINGERS_ROBOT  # reuse right-hand version
+
+FINGERS_ROBOT_L = {
+    "Thumb":       ["ll_dg_1_2","ll_dg_1_3","ll_dg_1_4","ll_dg_1_tip"],
+    "IndexFinger": ["ll_dg_2_2","ll_dg_2_3","ll_dg_2_4","ll_dg_2_tip"],
+    "MiddleFinger":["ll_dg_3_2","ll_dg_3_3","ll_dg_3_4","ll_dg_3_tip"],
+    "RingFinger":  ["ll_dg_4_2","ll_dg_4_3","ll_dg_4_4","ll_dg_4_tip"],
+    "LittleFinger":["ll_dg_5_2","ll_dg_5_3","ll_dg_5_4","ll_dg_5_tip"],
+}
+
 # Map robot link -> MANO right-hand semantic name used by JOINT_COLOR_BGR
 ROBOT_TO_MANO = {WRIST: "rightHand"}
 for mano_finger, chain in FINGERS_ROBOT.items():
@@ -185,18 +210,26 @@ K_LEFT  = np.array([[730.2571411132812, 0.0, 637.2598876953125],
                     [0.0, 730.2571411132812, 346.41082763671875],
                     [0.0, 0.0, 1.0]], dtype=np.float64)
 
-
 K_RIGHT = np.array([[730.257, 0.0, 637.259],
                     [0.0, 730.257, 346.410],
                     [0.0, 0.0, 1.0]], dtype=np.float64)
 
 # Extrinsics (camera frame to the robot frame (inverse of the camera calib extrinsics))
+# block transfer data
 T_BASE_TO_CAM_LEFT = np.linalg.inv(np.array([
     [ 0.00692993, -0.87310148,  0.48748926,  0.14062141],
     [-0.99995006, -0.00956093, -0.00290894,  0.03612369],
     [ 0.00720065, -0.48744476, -0.87312414,  0.46063114],
     [ 0., 0., 0., 1. ]
 ], dtype=np.float64))
+
+
+# calib for left camera quest assembly data
+# T_BASE_TO_CAM_LEFT = np.linalg.inv(np.array([
+#     [0.02169645, -0.70143451,  0.71240361,  0.14534308],
+#     [-0.99949077,  0.00145864,  0.03187594,  0.03543434],
+#     [-0.02339802, -0.71273242, -0.70104567,  0.47400349],
+#     [0.0,          0.0,          0.0,          1.0]], dtype=np.float64))
 
 # similar as above for the right camera
 T_BASE_TO_CAM_RIGHT = np.linalg.inv(np.array([
@@ -206,33 +239,51 @@ T_BASE_TO_CAM_RIGHT = np.linalg.inv(np.array([
     [ 0., 0., 0., 1. ]
 ], dtype=np.float64))
 
+# NEW: common fingertip link-name helper
+def _tip_links(prefix: str) -> list[str]:
+    # consistent with your right-hand naming (rl_dg_?_tip)
+    return [f"{prefix}_dg_{i}_tip" for i in [1, 2, 3, 4, 5]]  # thumb..pinky
+
+TIP_LINKS_L = _tip_links("ll")
+TIP_LINKS_R = _tip_links("rl")
+
 class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
-    def __init__(self, dataset_dir, chunk_size, stride = 3, overlay=False,
-        ):
+    def __init__(self, dataset_dir, chunk_size, stride=3, overlay=False,
+                 hand_mode: str = "right",  # "left", "right", or "both"
+                 urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
+                 urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf"):
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
         self.img_height = 224
         self.img_width  = 224
         self.stride = stride
-        self.overlay = overlay  # whether to overlay keypoints
-        urdf_right_path = urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf"
-      
-        self.right_hand_cols = [f"right_hand_{i}" for i in range(20)]
-        self.right_actual_hand_cols = [f"right_actual_hand_{i}" for i in range(20)]
-        self.action_camera = "left"  # which camera to use for action ref frame
+        self.overlay = overlay
+        self.hand_mode = hand_mode  # NEW
 
-        # Load URDF + connections only when we actually overlay
-        if self.overlay:
+        # columns
+        self.left_hand_cols  = [f"left_hand_{i}"  for i in range(20)]
+        self.right_hand_cols = [f"right_hand_{i}" for i in range(20)]
+        self.left_actual_hand_cols  = [f"left_actual_hand_{i}"  for i in range(20)]
+        self.right_actual_hand_cols = [f"right_actual_hand_{i}" for i in range(20)]
+
+        self.action_camera = "left"
+
+        # CHANGED: load both URDFs when needed
+        if self.overlay or (self.hand_mode in ("left", "both")):
+            self.robot_l = URDF.load(urdf_left_path)
+            self.left_joint_names = [j.name for j in self.robot_l.joints if j.joint_type != "fixed"]
+        if self.overlay or (self.hand_mode in ("right", "both")):
             self.robot_r = URDF.load(urdf_right_path)
             self.right_joint_names = [j.name for j in self.robot_r.joints if j.joint_type != "fixed"]
-            # draw skeleton connections (right)
+
+        # right-hand drawing connections (keep your original overlay code)
+        if self.overlay:
             self.right_connections = [(j.parent, j.child) for j in self.robot_r.joints]
-            # connect fingertips -> mids -> knuckles for nicer lines
             for g in _HAND_LINK_GROUPS.values():
                 names = [f"rl_{x}" for x in g]
                 self.right_connections.extend(_connect(names))
-        
+
         self.debug_labels = True
 
         # collect demo folders: Demo1, Demo2, ..., DemoN
@@ -290,6 +341,102 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.index)
 
+    # --- helpers: pick commanded vs actual joints safely ---
+    def _get_joint_cols(self, side: str, kind: str) -> list[str]:
+        if side == "left":
+            primary  = self.left_actual_hand_cols  if kind == "actual" else self.left_hand_cols
+            fallback = self.left_hand_cols         if kind == "actual" else self.left_actual_hand_cols
+        else:
+            primary  = self.right_actual_hand_cols if kind == "actual" else self.right_hand_cols
+            fallback = self.right_hand_cols        if kind == "actual" else self.right_actual_hand_cols
+        return primary, fallback
+
+    def _get_joint_angles20(self, row, side: str, kind: str) -> list[float]:
+        primary, fallback = self._get_joint_cols(side, kind)
+        cols = primary if all(c in row for c in primary) else fallback
+        return [float(row[c]) for c in cols]
+
+    # NEW: FK for left hand world points
+    def _fk_points_left_world(self, row):
+        T_ee  = _pose_to_T([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]],
+                        [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]])
+        T_hand = T_ee @ T_EE_TO_HAND_L
+        angles = [float(row[f"left_actual_hand_{i}"]) for i in range(20)]
+        fk = self.robot_l.link_fk(cfg=dict(zip(self.left_joint_names, angles)), use_names=True)
+        T_fkbase_inv = np.linalg.inv(fk.get("FK_base", np.eye(4)))
+        pts = {}
+        for link_name, T_link_model in fk.items():
+            if not link_name.startswith("ll_"):
+                continue
+            T_link_in_hand = T_fkbase_inv @ T_link_model
+            T_world        = T_hand @ T_link_in_hand
+            pts[link_name] = T_world[:3, 3]
+        return pts
+
+    # NEW: unified FK dispatcher
+    def _fk_points_world(self, row, side: str, kind: str = "actual"):
+        # EE -> HAND
+        if side == "left":
+            T_ee = _pose_to_T([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]],
+                            [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]])
+            T_hand = T_ee @ T_EE_TO_HAND_L
+            robot, joint_names, prefix = self.robot_l, self.left_joint_names, "ll_"
+        else:
+            T_ee = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
+                            [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]])
+            T_hand = T_ee @ T_EE_TO_HAND_R
+            robot, joint_names, prefix = self.robot_r, self.right_joint_names, "rl_"
+
+        angles = self._get_joint_angles20(row, side, kind)  # kind: "actual" or "cmd"
+        fk = robot.link_fk(cfg=dict(zip(joint_names, angles)), use_names=True)
+
+        T_fkbase_inv = np.linalg.inv(fk.get("FK_base", np.eye(4)))
+        pts = {}
+        for link_name, T_link_model in fk.items():
+            if not link_name.startswith(prefix):
+                continue
+            T_link_in_hand = T_fkbase_inv @ T_link_model
+            T_world        = T_hand @ T_link_in_hand
+            xyz = T_world[:3, 3]
+            if np.all(np.isfinite(xyz)):
+                pts[link_name] = xyz
+        return pts
+
+    # NEW: side-aware camera transform for wrist pose + 6D ori
+    def _row_wrist_pose6d_in_left_cam(self, row, side: str):
+        if side == "left":
+            p_world = np.array([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]], dtype=np.float64)
+            rq = [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]]
+        else:
+            p_world = np.array([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]], dtype=np.float64)
+            rq = [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]]
+
+        p_cam = self._world_to_cam3(p_world)
+        rR    = R.from_quat(rq).as_matrix()
+        R_cam = self._rot_base_to_cam(rR)
+        ori6d = R_cam[:, :2].reshape(-1, order="F")  # 6D
+
+        return p_cam.astype(np.float32), ori6d.astype(np.float32)  # (3,), (6,)
+
+    # NEW: fingertip positions in left camera frame, order [thumb,index,middle,ring,pinky]
+    def _tip_positions_in_left_cam(self, pts_map_world: dict, side: str) -> np.ndarray:
+        tips = TIP_LINKS_L if side == "left" else TIP_LINKS_R
+        out = []
+        for link in tips:
+            if link not in pts_map_world:
+                out.extend([np.nan, np.nan, np.nan])  # or zeros if you prefer
+            else:
+                out.extend(self._world_to_cam3(pts_map_world[link]).astype(np.float32))
+        return np.asarray(out, dtype=np.float32)  # (15,)
+
+    # NEW: build 24D hand action for a given side
+    def _row_to_hand_action24(self, row, side: str) -> np.ndarray:
+        p_cam, ori6d = self._row_wrist_pose6d_in_left_cam(row, side)
+        # Actions should reflect commanded hand → use kind="cmd"
+        pts_map_cmd = self._fk_points_world(row, side, kind="cmd")
+        tip15 = self._tip_positions_in_left_cam(pts_map_cmd, side)  # 5 tips x 3
+        return np.concatenate([p_cam, ori6d, tip15], axis=0)  # (24,)
+
     def _fk_points_right_world(self, row):
         # EE pose -> hand pose (world)
         T_ee  = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
@@ -319,50 +466,56 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         cv2.putText(img, text, (x, y), font, fs, color, th, cv2.LINE_AA)
 
 
-    def _project_draw_right_on_left(self, img_bgr, pts_map):
+    def _project_draw_hands_on_left(self, img_bgr, pts_map_left=None, pts_map_right=None):
         """
-        Occlusion-aware drawing of the robot right hand using MANO-style colors.
+        Projects and draws left/right/both robot hands in the left camera image,
+        using occlusion-aware depth ordering (same logic as original).
         """
         h, w = img_bgr.shape[:2]
-        fx, fy, cx, cy = K_LEFT[0,0], K_LEFT[1,1], K_LEFT[0,2], K_LEFT[1,2]
+        Kvis = scale_K(K_LEFT, w, h, orig_W=1280, orig_H=720)
+        fx, fy, cx, cy = Kvis[0,0], Kvis[1,1], Kvis[0,2], Kvis[1,2]
 
-        # ---- ordered names (wrist + 5×4 fingers) ----
-        names = [WRIST] + [n for chain in FINGERS_ROBOT.values() for n in chain]
+        names, edges_by_name, uv, z, color_of = [], [], [], [], {}
 
-        uv, z = [], []
-        for name in names:
-            if name not in pts_map:
-                uv.append(None); z.append(np.inf)
-                continue
-            x, y, z0 = pts_map[name]
-            Pc = T_BASE_TO_CAM_LEFT @ np.array([x, y, z0, 1.0], dtype=np.float64)
-            Z = float(Pc[2])
-            if Z <= 1e-6:
-                uv.append(None); z.append(np.inf)
-                continue
-            u = int(fx * Pc[0] / Z + cx)
-            v = int(fy * Pc[1] / Z + cy)
-            if 0 <= u < w and 0 <= v < h:
-                uv.append((u, v)); z.append(Z)
-            else:
-                uv.append(None); z.append(Z)
+        # utility to process one hand
+        def _process_hand(prefix, wrist, fingers, pts_map):
+            local_names = [wrist] + [n for chain in fingers.values() for n in chain]
+            local_edges = []
+            for chain in fingers.values():
+                local_edges.append((wrist, chain[0]))
+                local_edges.extend(zip(chain, chain[1:]))
+            for name in local_names:
+                if name not in pts_map:
+                    uv.append(None); z.append(np.inf)
+                    names.append(name)
+                    continue
+                x, y, z0 = pts_map[name]
+                Pc = T_BASE_TO_CAM_LEFT @ np.array([x, y, z0, 1.0])
+                Z = float(Pc[2])
+                if Z <= 1e-6:
+                    uv.append(None); z.append(np.inf); names.append(name)
+                    continue
+                u = int(fx * Pc[0] / Z + cx)
+                v = int(fy * Pc[1] / Z + cy)
+                if 0 <= u < w and 0 <= v < h:
+                    uv.append((u, v)); z.append(Z)
+                else:
+                    uv.append(None); z.append(Z)
+                names.append(name)
+            edges_by_name.extend(local_edges)
+            for n in local_names:
+                mano = _link_to_mano(n)
+                color_of[n] = JOINT_COLOR_BGR.get(mano, (210,210,210)) if mano else (210,210,210)
+
+        # handle left/right
+        if pts_map_left is not None:
+            _process_hand("ll", WRIST_L, FINGERS_ROBOT_L, pts_map_left)
+        if pts_map_right is not None:
+            _process_hand("rl", WRIST_R, FINGERS_ROBOT_R, pts_map_right)
+
+        # draw with your occlusion-aware routine
         z = np.array(z, dtype=np.float32)
-
-        # ---- edges (wrist→knuckle + per-finger chains) ----
-        edges_by_name = []
-        for chain in FINGERS_ROBOT.values():
-            edges_by_name.append((WRIST, chain[0]))
-            edges_by_name.extend(zip(chain, chain[1:]))
-
-        # ---- per-joint colors via MANO mapping ----
-        fallback = (210,210,210)
-        color_of = {}
-        for n in names:
-            mano = _link_to_mano(n)
-            color_of[n] = JOINT_COLOR_BGR.get(mano, fallback) if mano else fallback
-
-        # ---- convert BGR→RGB float and draw ----
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         img_rgb = draw_skeleton_occlusion_aware(
             img_rgb,
             names=names,
@@ -374,9 +527,8 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             line_thickness=3,
             edge_segments=12,
         )
+        return cv2.cvtColor((img_rgb * 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
 
-        # ---- back to BGR for later pipeline ----
-        return cv2.cvtColor((img_rgb*255).astype(np.uint8), cv2.COLOR_RGB2BGR)
 
 
     def _load_img_raw_bgr(self, demo_dir, ts, cam_name="left"):
@@ -419,47 +571,224 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         a = np.concatenate([p_cam.astype(np.float32), ori6d.astype(np.float32), joints20], axis=0)
         return a  # (29,)
 
+    # CHANGED: __getitem__ tail portion
     def __getitem__(self, index):
         ep_id, start_ts = self.index[index]
         demo_dir, episode_len = self.episodes[ep_id]
 
-        # image at the window start
         img_bgr = self._load_img_raw_bgr(demo_dir, start_ts, cam_name="left")
-
-        # read episode CSV once per sample (simple & practical). For speed, add a tiny cache (below).
         csv_path = os.path.join(demo_dir, "ee_hand.csv")
         df = pd.read_csv(csv_path)
 
-        # --- overlay on RAW image (optional) ---
         if self.overlay:
-            pts_r_world = self._fk_points_right_world(df.iloc[start_ts])
-            img_bgr = self._project_draw_right_on_left(img_bgr, pts_r_world)
-
-        # finally resize/normalize once
+            row0 = df.iloc[start_ts]
+            pts_L = pts_R = None
+            if self.hand_mode in ("left", "both"):
+                pts_L = self._fk_points_world(row0, "left", kind="actual")
+                if not pts_L:  # fallback
+                    pts_L = self._fk_points_world(row0, "left", kind="cmd")
+            if self.hand_mode in ("right", "both"):
+                pts_R = self._fk_points_world(row0, "right", kind="actual")
+                if not pts_R:
+                    pts_R = self._fk_points_world(row0, "right", kind="cmd")
+            img_bgr = self._project_draw_hands_on_left(img_bgr, pts_L, pts_R)
         image = self._resize_norm_rgb(img_bgr)
 
         end_ts = start_ts + self.chunk_size * self.stride
-        # We built index so end_ts <= episode_len
-        actions = [self._row_to_action(df.iloc[t]) for t in range(start_ts, end_ts, self.stride)]
-        actions = np.stack(actions, axis=0)  # (chunk_size, 29)
+        rows = [df.iloc[t] for t in range(start_ts, end_ts, self.stride)]
 
-        # Interleave zero token (left hand) with right-hand token, then pad to 32
-        actions_split = np.empty((actions.shape[0] * 2, 29), dtype=np.float32)
-        actions_split[0::2] = 0.0
-        actions_split[1::2] = actions
+        # Build per-time-step tokens
+        tokens = []  # will be [L,R,L,R,...] depending on mode
+        if self.hand_mode == "left":
+            for row in rows:
+                aL = self._row_to_hand_action24(row, "left")
+                tokens.append(aL)                 # even index -> left
+                tokens.append(np.zeros(24, np.float32))  # odd index -> zeros
+            state = self._row_to_hand_action24(df.iloc[start_ts], "left")  # 24D
 
-        # need to pad from 29 - 32 dims
-        actions_out = np.zeros((actions_split.shape[0], 32), dtype=np.float32)
-        actions_out[:, :29] = actions_split
+        elif self.hand_mode == "right":
+            for row in rows:
+                tokens.append(np.zeros(24, np.float32))  # even index -> zeros
+                aR = self._row_to_hand_action24(row, "right")
+                tokens.append(aR)                 # odd index -> right
+            state = self._row_to_hand_action24(df.iloc[start_ts], "right")  # 24D
 
-        state = actions_out[1].copy()  # first right-hand token as state
+        else:  # "both"
+            for row in rows:
+                aL = self._row_to_hand_action24(row, "left")
+                aR = self._row_to_hand_action24(row, "right")
+                tokens.append(aL)  # even -> left
+                tokens.append(aR)  # odd  -> right
 
+            # 30D state: L wrist(3)+ori6(6) + R wrist(3)+ori6(6) + L tips {thumb,index}(6) + R tips {thumb,index}(6)
+            row0 = df.iloc[start_ts]
+            pL, oL = self._row_wrist_pose6d_in_left_cam(row0, "left")
+            pR, oR = self._row_wrist_pose6d_in_left_cam(row0, "right")
+            ptsL = self._fk_points_world(row0, "left", kind="actual")
+            ptsR = self._fk_points_world(row0, "right", kind="actual")
+            # thumb = index 0, index = index 1 in TIP_LINKS_*
+            L_thumb = self._world_to_cam3(ptsL[TIP_LINKS_L[0]]) if TIP_LINKS_L[0] in ptsL else np.zeros(3, np.float32)
+            L_index = self._world_to_cam3(ptsL[TIP_LINKS_L[1]]) if TIP_LINKS_L[1] in ptsL else np.zeros(3, np.float32)
+            R_thumb = self._world_to_cam3(ptsR[TIP_LINKS_R[0]]) if TIP_LINKS_R[0] in ptsR else np.zeros(3, np.float32)
+            R_index = self._world_to_cam3(ptsR[TIP_LINKS_R[1]]) if TIP_LINKS_R[1] in ptsR else np.zeros(3, np.float32)
+
+            state = np.concatenate([
+                pL.astype(np.float32), oL.astype(np.float32),
+                pR.astype(np.float32), oR.astype(np.float32),
+                L_thumb.astype(np.float32), L_index.astype(np.float32),
+                R_thumb.astype(np.float32), R_index.astype(np.float32),
+            ], axis=0)  # (30,)
+
+        actions = np.stack(tokens, axis=0).astype(np.float32)  # (2*chunk_size, 24)
+
+        # state shape varies by mode
         return {
-            "image":   image.astype(np.float32),   # (H, W, 3) in [0,1]
-            "state":   state.astype(np.float32),   # (32,)
-            "actions": actions_out.astype(np.float32),  # (2*chunk_size, 32)
+            "image":   image.astype(np.float32),     # (H, W, 3) in [0,1]
+            "state":   state.astype(np.float32),     # (24,) for L/R, (30,) for both
+            "actions": actions,                      # (2*chunk_size, 24), interleaved
             "task":    "place red cube into box",
         }
+
+
+# ===================== Simple visualization =====================
+
+def _cam3_to_uv(Pc, K, H, W):
+    Z = float(Pc[2])
+    if Z <= 1e-6:
+        return None
+    u = int(K[0,0] * Pc[0] / Z + K[0,2])
+    v = int(K[1,1] * Pc[1] / Z + K[1,2])
+    if 0 <= u < W and 0 <= v < H:
+        return (u, v)
+    return None
+
+def _draw_points(img_bgr, pts_uv, color=(0, 200, 255), radius=5, label=None):
+    for (uv, name) in pts_uv:
+        if uv is None:
+            continue
+        cv2.circle(img_bgr, uv, radius, color, -1, cv2.LINE_AA)
+        if label:
+            cv2.putText(img_bgr, f"{label}:{name}", (uv[0]+3, uv[1]-3),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0,0,0), 2, cv2.LINE_AA)
+            cv2.putText(img_bgr, f"{label}:{name}", (uv[0]+3, uv[1]-3),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,255,255), 1, cv2.LINE_AA)
+
+def save_visualizations(ds, out_dir, num_samples=4):
+    os.makedirs(out_dir, exist_ok=True)
+    dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
+
+    # names in order: thumb, index, middle, ring, pinky
+    TIP_LINKS_L = [f"ll_dg_{i}_tip" for i in [1,2,3,4,5]]
+    TIP_LINKS_R = [f"rl_dg_{i}_tip" for i in [1,2,3,4,5]]
+
+    for i, batch in enumerate(dl):
+        # raw image at this index (load again to keep original size)
+        ep_id, t0 = ds.index[0] if i == 0 else ds.index[i]
+        demo_dir, _ = ds.episodes[ep_id]
+        img_bgr = ds._load_img_raw_bgr(demo_dir, t0, cam_name="left")
+        H, W = img_bgr.shape[:2]
+
+        # TODO: integrate into the core code above in getitem
+        K_use = scale_K(K_LEFT, new_W=W, new_H=H, orig_W=1280, orig_H=720)
+
+
+        # row for projections
+        csv_path = os.path.join(demo_dir, "ee_hand.csv")
+        row0 = pd.read_csv(csv_path).iloc[t0]
+
+        # ----- ACTIONS VIS -----
+        pts_uv_L, pts_uv_R = [], []
+
+        # wrists
+        if ds.hand_mode in ("left", "both"):
+            pL, _ = ds._row_wrist_pose6d_in_left_cam(row0, "left")
+            uvL = _cam3_to_uv(pL, K_use, H, W)
+            pts_uv_L.append((uvL, "wrist"))
+
+        if ds.hand_mode in ("right", "both"):
+            pR, _ = ds._row_wrist_pose6d_in_left_cam(row0, "right")
+            uvR = _cam3_to_uv(pR, K_use, H, W)
+            pts_uv_R.append((uvR, "wrist"))
+
+        # fingertips
+        if ds.hand_mode in ("left", "both"):
+            fkL = ds._fk_points_world(row0, "left", kind="cmd")
+            for name in TIP_LINKS_L:
+                # print(name, fkL[name])
+                Pc = ds._world_to_cam3(fkL[name]) if name in fkL else None
+                # print("L tip", name, "Pc", Pc)
+                pts_uv_L.append((_cam3_to_uv(Pc, K_use, H, W) if Pc is not None else None,
+                                 name.split("_")[-1]))
+
+        if ds.hand_mode in ("right", "both"):
+            fkR = ds._fk_points_world(row0, "right", kind="cmd")
+            for name in TIP_LINKS_R:
+                Pc = ds._world_to_cam3(fkR[name]) if name in fkR else None
+                pts_uv_R.append((_cam3_to_uv(Pc, K_use, H, W) if Pc is not None else None,
+                                 name.split("_")[-1]))
+
+        img_actions = img_bgr.copy()
+        _draw_points(img_actions, pts_uv_L, color=(255, 160, 0),  radius=6, label="L")
+        _draw_points(img_actions, pts_uv_R, color=(0, 220, 0),    radius=6, label="R")
+
+        out_actions = os.path.join(out_dir, f"sample_{i:02d}_actions.png")
+        cv2.imwrite(out_actions, img_actions)
+
+        # ----- STATE VIS -----
+        # both-mode: state uses L/R wrist + L/R thumb+index.
+        # left/right-mode: show the same thumb+index for the active hand for consistency.
+        img_state = img_bgr.copy()
+        pts_state = []
+
+        # L wrist + thumb/index
+        if ds.hand_mode in ("left", "both"):
+            pL, _ = ds._row_wrist_pose6d_in_left_cam(row0, "left")
+            pts_state.append((_cam3_to_uv(pL, K_use, H, W), "L:wrist"))
+            if 'fkL' not in locals():
+                fkL = ds._fk_points_world(row0, "left", kind="actual")
+            for tip_link, tip_name in [(TIP_LINKS_L[0], "L:thumb"), (TIP_LINKS_L[1], "L:index")]:
+                Pc = ds._world_to_cam3(fkL[tip_link]) if tip_link in fkL else None
+                pts_state.append((_cam3_to_uv(Pc, K_use, H, W) if Pc is not None else None, tip_name))
+
+        # R wrist + thumb/index
+        if ds.hand_mode in ("right", "both"):
+            pR, _ = ds._row_wrist_pose6d_in_left_cam(row0, "right")
+            pts_state.append((_cam3_to_uv(pR, K_use, H, W), "R:wrist"))
+            if 'fkR' not in locals():
+                fkR = ds._fk_points_world(row0, "right", kind="actual")
+            for tip_link, tip_name in [(TIP_LINKS_R[0], "R:thumb"), (TIP_LINKS_R[1], "R:index")]:
+                Pc = ds._world_to_cam3(fkR[tip_link]) if tip_link in fkR else None
+                pts_state.append((_cam3_to_uv(Pc, K_use, H, W) if Pc is not None else None, tip_name))
+
+        # draw with two colors for readability
+        _draw_points(img_state, [(uv, n) for (uv, n) in pts_state if n.startswith("L")],
+                     color=(255, 160, 0), radius=6, label=None)
+        _draw_points(img_state, [(uv, n) for (uv, n) in pts_state if n.startswith("R")],
+                     color=(0, 220, 0), radius=6, label=None)
+
+        out_state = os.path.join(out_dir, f"sample_{i:02d}_state.png")
+        cv2.imwrite(out_state, img_state)
+
+        print(f"saved\n  {out_actions}\n  {out_state}")
+        if i + 1 >= num_samples:
+            break
+
+
+# ----------------- quick runner -----------------
+# if __name__ == "__main__":
+#     dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
+#     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change as needed
+
+
+    
+#     ds = GalaxeaDatasetKeypointsJoints(
+#         dataset_dir=dataset_root,
+#         chunk_size=8,
+#         stride=3,
+#         overlay=False,
+#         hand_mode="both",  # "left" | "right" | "both"
+#     )
+#     save_visualizations(ds, out_dir="/iris/projects/humanoid/openpi/robot_vis", num_samples=500)
 
 #################################################################
 #################################################################
@@ -467,45 +796,47 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #################################################################
 #################################################################
 
-# import os
-# import numpy as np
-# import cv2
-# from torch.utils.data import DataLoader
+import os
+import numpy as np
+import cv2
+from torch.utils.data import DataLoader
 
-# # ---- import your dataset class first ----
-# # from your_file import GalaxeaDatasetKeypointsJoints
+# ---- import your dataset class first ----
+# from your_file import GalaxeaDatasetKeypointsJoints
 
-# def save_rgb01(path, rgb01):
-#     """rgb01: (H,W,3) float32 in [0,1]"""
-#     bgr_u8 = (np.clip(rgb01, 0, 1) * 255).astype(np.uint8)[:, :, ::-1]  # RGB->BGR
-#     cv2.imwrite(path, bgr_u8)
+def save_rgb01(path, rgb01):
+    """rgb01: (H,W,3) float32 in [0,1]"""
+    bgr_u8 = (np.clip(rgb01, 0, 1) * 255).astype(np.uint8)[:, :, ::-1]  # RGB->BGR
+    cv2.imwrite(path, bgr_u8)
 
-# if __name__ == "__main__":
-#     dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
+if __name__ == "__main__":
+#     dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
 
-#     ds = GalaxeaDatasetKeypointsJoints(
-#         dataset_dir=dataset_root,
-#         chunk_size=8,
-#         stride=3,
-#         overlay=True,   # turn on drawing
-#     )
+    dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 
-#     dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
+    ds = GalaxeaDatasetKeypointsJoints(
+        dataset_dir=dataset_root,
+        chunk_size=8,
+        stride=3,
+        overlay=True,   # turn on drawing
+    )
 
-#     out_dir = "/iris/projects/humanoid/openpi/robot_vis"
-#     os.makedirs(out_dir, exist_ok=True)
+    dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
 
-#     # grab and save first 8 samples
-#     for i, batch in enumerate(dl):
-#         img = batch["image"][0].numpy()          # (H,W,3) float32 [0,1]
-#         state = batch["state"][0].numpy()        # (32,)
-#         actions = batch["actions"][0].numpy()    # (2*chunk, 32)
-#         task = batch["task"][0]
+    out_dir = "/iris/projects/humanoid/openpi/robot_vis"
+    os.makedirs(out_dir, exist_ok=True)
 
-#         save_rgb01(os.path.join(out_dir, f"sample_{i:02d}.png"), img)
-#         print(f"saved {os.path.join(out_dir, f'sample_{i:02d}.png')}  |  state {state.shape}  actions {actions.shape}  task={task}")
+    # grab and save first 8 samples
+    for i, batch in enumerate(dl):
+        img = batch["image"][0].numpy()          # (H,W,3) float32 [0,1]
+        state = batch["state"][0].numpy()        # (32,)
+        actions = batch["actions"][0].numpy()    # (2*chunk, 32)
+        task = batch["task"][0]
 
-#         if i >= 7:
-#             break
+        save_rgb01(os.path.join(out_dir, f"sample_{i:02d}.png"), img)
+        print(f"saved {os.path.join(out_dir, f'sample_{i:02d}.png')}  |  state {state.shape}  actions {actions.shape}  task={task}")
 
-#     print(f"Done. Check images in: {os.path.abspath(out_dir)}")
+        if i >= 7:
+            break
+
+    print(f"Done. Check images in: {os.path.abspath(out_dir)}")
