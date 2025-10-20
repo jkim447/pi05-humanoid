@@ -1,3 +1,9 @@
+"""
+usage:
+
+uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_galaxea_egodex_pick_place --policy.dir=/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_pick_place/galaxea_egodex_pick_place/20000
+"""
+
 import dataclasses
 import enum
 import logging
@@ -112,7 +118,8 @@ def main(args: Args) -> None:
     logging.info("Warming up policy JIT...")
     dummy = {
         "image": np.zeros((224, 224, 3), dtype=np.uint8),
-        "wrist_image": np.zeros((224, 224, 3), dtype=np.uint8),
+        "wrist_image_left": np.zeros((224, 224, 3), dtype=np.uint8),
+        "wrist_image_right": np.zeros((224, 224, 3), dtype=np.uint8),
         "state": np.zeros((32,), dtype=np.float32),
         "prompt": "warmup",
     }

@@ -198,6 +198,7 @@ def create_torch_dataset(
         traj_per_task=getattr(data_config, "traj_per_task", None),    # optional subsampling
         max_episodes=getattr(data_config, "max_episodes", None),      # optional cap
         rebuild_index=False,  # TODO: choose correctly
+        ############# TODO: TODO TODO TODO: set load_images to TRUEEEE when training!
         load_images = True, # TODO: choose correctly # second TODO: set to true to start training
         overlay = overlay)
 

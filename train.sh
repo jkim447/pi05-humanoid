@@ -21,5 +21,5 @@ source set_env.sh
 # run training
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 \
 uv run scripts/train.py pi05_galaxea_egodex_pick_place \
-    --exp-name=galaxea_egodex_pick_place_delta_absolute \
+    --exp-name=galaxea_egodex_pick_place_delta_native_corrected_language_instruction \
     --overwrite

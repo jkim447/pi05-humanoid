@@ -20,12 +20,12 @@ client = websocket_client_policy.WebsocketClientPolicy(host="10.79.12.252", port
 print("im here2")
 
 num_steps = 1
-idx = 90
+idx = 40
 # specify img path
-csv_path = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana/demo_10/ee_hand.csv"
-img_path = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana/demo_10/left/{idx:06d}.jpg"
-left_wrist_img_path = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana/demo_10/left_wrist/{idx:06d}.jpg"
-right_wrist_img_path = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana/demo_10/right_wrist/{idx:06d}.jpg"
+csv_path = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/long_green_cube/demo_10/ee_hand.csv"
+img_path = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/long_green_cube/demo_10/left/{idx:06d}.jpg"
+left_wrist_img_path = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/long_green_cube/demo_10/left_wrist/{idx:06d}.jpg"
+right_wrist_img_path = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/long_green_cube/demo_10/right_wrist/{idx:06d}.jpg"
 # read imgs
 img = cv2.imread(img_path)
 lw_img = cv2.imread(left_wrist_img_path)
@@ -42,9 +42,9 @@ rw_img = cv2.resize(rw_img, (224, 224), interpolation=cv2.INTER_AREA)
 lw_img = lw_img[::-1, ::-1, :]          # numpy way
 task_instruction = "vertical_pick_place"
 right_hand_cols = [f"right_hand_{i}" for i in range(20)]
-# cv2.imwrite("left_wrist_sample.jpg", cv2.cvtColor(lw_img, cv2.COLOR_RGB2BGR))
-# cv2.imwrite("right_wrist_sample.jpg", cv2.cvtColor(rw_img, cv2.COLOR_RGB2BGR))
-# print("Saved wrist images to left_wrist_sample.jpg and right_wrist_sample.jpg")
+cv2.imwrite("left_wrist_sample.jpg", cv2.cvtColor(lw_img, cv2.COLOR_RGB2BGR))
+cv2.imwrite("right_wrist_sample.jpg", cv2.cvtColor(rw_img, cv2.COLOR_RGB2BGR))
+print("Saved wrist images to left_wrist_sample.jpg and right_wrist_sample.jpg")
 
 T_BASE_TO_CAM_LEFT = np.linalg.inv(np.array([
     [0.01988061, -0.43758429,  0.89895759,  0.14056752],
@@ -195,8 +195,8 @@ def _draw_skeleton_occlusion_aware(
     z: np.ndarray,
     edges_by_name: list[tuple[str,str]],
     color_of: dict[str, tuple[int,int,int]],
-    pt_radius: int = 5,
-    line_thickness: int = 3,
+    pt_radius: int = 4,
+    line_thickness: int = 2,
     edge_segments: int = 12,
 ) -> np.ndarray:
     """Depth-sort edges/points so nearer ones overdraw farther ones."""
@@ -387,13 +387,13 @@ img = cv2.resize(img, (224, 224), interpolation=cv2.INTER_AREA)
 
 # SAVE OVERLAY SAMPLES (server friendly, no visualization)
 overlay_out = "hand_overlay_sample.jpg"
-ok = cv2.imwrite(overlay_out, img_draw_bgr)
+ok = cv2.imwrite(overlay_out, img)
 print(f"Saved hand overlay to: {overlay_out} | ok={ok} | size={img_draw_bgr.shape}")
 
 
 # 2) 30D state
-# state = _build_state30(row).astype(np.float32)
-state = _build_state24_right(row)
+state = _build_state30(row).astype(np.float32)
+# state = _build_state24_right(row)
 
 for step in range(num_steps):
     # Inside the episode loop, construct the observation.
@@ -423,12 +423,13 @@ for step in range(num_steps):
 
 
     # 2) Policy actions: take odd timesteps only (1,3,5,...), first 3 dims are xyz
-    act_xyz = action_chunk[1::2, :3]  # shape (25, 3) if action_chunk is (50, 32)
+    print(action_chunk.shape)
+    act_xyz = action_chunk[1::2, 0:3]  # shape (25, 3) if action_chunk is (50, 32)
     print("gt", gt_xyz[0:3])
-    act_xyz = act_xyz + state[0:3]
+    act_xyz = act_xyz + state[9:12]
+    # print("gt:", gt_xyz[0, 0:3])
     print("output", act_xyz[0:3])
-    print("gt:", gt_xyz[0, 0:3])
-    print("state", state[0:3])
+    print("state", state[9:12])
     # print("after:", act_xyz[0:3])
     
 

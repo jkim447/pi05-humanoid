@@ -334,7 +334,9 @@ class EgoDexSeqDataset(Dataset):
 
             # tasks you want to fully include
             # TODO: include whatever task that is MOST important
+            # TODO: undo before training!
             include_all = {"vertical_pick_place"}  # <== edit this list
+            # include_all = {}
 
             def _task_name(ep: Episode) -> str:
                 return os.path.basename(os.path.dirname(ep.h5))
@@ -408,7 +410,9 @@ class EgoDexSeqDataset(Dataset):
 
         index = []
         for ep_id, (_, _, N) in enumerate(self.episodes):
-            last_start = N - self.H  # TODO: this is not good, need to pad!
+            # last_start = N - self.H  # TODO: this is not good, need to pad!
+            # index.extend((ep_id, t0) for t0 in range(0, last_start + 1, self.stride))
+            last_start = N - 1  # allow starting at the final frame
             index.extend((ep_id, t0) for t0 in range(0, last_start + 1, self.stride))
         self.index: List[Tuple[int, int]] = index
 
@@ -577,6 +581,7 @@ class EgoDexSeqDataset(Dataset):
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         ep_id, t0 = self.index[idx]
         h5_path, mp4_path, N = self.episodes[ep_id]
+        t0 = min(t0, N - 1)  # clamp
 
         if self.load_images:
             image = self._read_rgb(mp4_path, t0)
@@ -661,15 +666,32 @@ class EgoDexSeqDataset(Dataset):
                 )
                                                 
             # --- Galaxea-compatible outputs (both-hands layout) ---
-            # Actions: [L24, R24, L24, R24, ...] for H steps -> (2*H, 24)
-            # State:   30-D  (L pos+rot6, R pos+rot6, L thumb+index, R thumb+index)
+            # Actions (relative): [L24, R24, L24, R24, ...] for H steps -> (2*H, 24)
+            # State: 30-D (unchanged)
+            # baselines at t0
+            base_L = self._hand_action24(f, t0, "left")
+            base_R = self._hand_action24(f, t0, "right")
+
             actions_lr = []
+            # optional: a mask to mark valid timesteps (1 = valid, 0 = padded)
+            valid_mask = []
+
             for dt in range(self.H):
-                actions_lr.append(self._hand_action24(f, t0 + dt, "left"))
-                actions_lr.append(self._hand_action24(f, t0 + dt, "right"))
+                t = t0 + dt
+                if t < N:
+                    aL = self._hand_action24(f, t, "left")  - base_L
+                    aR = self._hand_action24(f, t, "right") - base_R
+                    actions_lr.append(aL.astype(np.float32))
+                    actions_lr.append(aR.astype(np.float32))
+                    valid_mask.extend([1, 1])
+                else:
+                    # zero-pad beyond trajectory
+                    actions_lr.append(np.zeros(24, np.float32))
+                    actions_lr.append(np.zeros(24, np.float32))
+                    valid_mask.extend([0, 0])
+
             actions = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*H, 24)
             state   = self._state_both30(f, t0).astype(np.float32)     # (30,)
-
 
         # task = folder name (parent directory of the file)
         task = os.path.basename(os.path.dirname(h5_path))

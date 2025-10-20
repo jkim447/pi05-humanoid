@@ -503,13 +503,12 @@ class LeRobotGalaxeaDataConfigThreeImgs(DataConfigFactory):
         # TODO change transforms.make_bool_mask to the actual action_dim
         # delta_action_mask = _transforms.make_bool_mask(model_config.action_dim)
         delta_action_mask = _transforms.make_bool_mask(24) 
-        data_transforms = data_transforms.push(
+        # TODO: removed since all actions are relative from now on by default
+        # data_transforms = data_transforms.push(
             # inputs=[_transforms.DeltaActions(delta_action_mask)],
-            # TODO: I've completely changed my delta action logic here!
-            inputs=[_transforms.DeltaActionsFromFirst(delta_action_mask)],
-            # TODO: uncomment me if needed! Likely makes the policy outputs raw relative
+            # inputs=[_transforms.DeltaActionsFromFirst(delta_action_mask)],
             # outputs=[_transforms.AbsoluteActions(delta_action_mask)],
-        )
+        # )
 
         # ------------------------------------------------------------------------------
         # 3) Model transforms (tokenization, target prep, etc.) – unchanged.
@@ -591,12 +590,14 @@ class EgodexDataConfig(DataConfigFactory):
         # TODO change transforms.make_bool_mask to the actual action_dim
         # delta_action_mask = _transforms.make_bool_mask(model_config.action_dim)
         delta_action_mask = _transforms.make_bool_mask(24) 
-        data_transforms = data_transforms.push(
-            # TODO: I've completely changed my delta action logic here!
-            inputs=[_transforms.DeltaActionsFromFirst(delta_action_mask)],
-            # TODO: I've commented this out
-            # outputs=[_transforms.AbsoluteActions(delta_action_mask)],
-        )
+        # TODO: removed since actions are defaulted to relative and we'll
+        # construct our own absolute actions
+        # data_transforms = data_transforms.push(
+        #     # TODO: I've completely changed my delta action logic here!
+        #     inputs=[_transforms.DeltaActionsFromFirst(delta_action_mask)],
+        #     # TODO: I've commented this out
+        #     # outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+        # )
 
         # ------------------------------------------------------------------------------
         # 3) Model transforms (tokenization, target prep, etc.) – unchanged.
@@ -986,11 +987,11 @@ _CONFIGS = [
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
         num_train_steps=300_000, # TODO: change as needed
-        batch_size=256, # TODO: change as needed
-        num_workers=12
+        # batch_size=256, # TODO: change as needed
+        # num_workers=12
 
-        # batch_size=32, # TODO: change as needed
-        # num_workers=0
+        batch_size=32, # TODO: change as needed
+        num_workers=0
         
         # lr_schedule=_optimizer.CosineDecaySchedule(),
         # optimizer=_optimizer.AdamW(),
