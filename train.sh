@@ -5,7 +5,7 @@
 #SBATCH --nodelist=iris-hgx-2
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=96:00:00
+#SBATCH --time=72:00:00
 #SBATCH --mem=1000G                  # adjust if you need less/more
 #SBATCH --cpus-per-task=64          # tune if you want more data-loader threads
 
@@ -19,8 +19,7 @@ source .venv/bin/activate
 source set_env.sh 
 
 # run training
-
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 \
-uv run scripts/train.py pi05_mixed_kp \
-    --exp-name=co_training_kp \
-    --resume
+uv run scripts/train.py pi05_galaxea_egodex_pick_place \
+    --exp-name=galaxea_egodex_pick_place_delta_absolute \
+    --overwrite

@@ -181,4 +181,5 @@ robot_vis/
 src/openpi/training/vis_samples_simple/
 core
 vis_human*/
-vis_samples_simple/
+vis_samples_simple
+pi05-*

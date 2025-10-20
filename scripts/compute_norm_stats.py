@@ -17,7 +17,7 @@ import openpi.shared.normalize as normalize
 import openpi.training.config as _config
 import openpi.training.data_loader as _data_loader
 import openpi.transforms as transforms
-
+from torch.utils.data import ConcatDataset
 
 class RemoveStrings(transforms.DataTransformFn):
     def __call__(self, x: dict) -> dict:
@@ -34,10 +34,15 @@ def create_torch_dataloader(
 ) -> tuple[_data_loader.Dataset, int]:
     if data_config.repo_id is None:
         raise ValueError("Data config must have a repo_id")
-    dataset = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    # dataset = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    # TODO: revise this accordingly to your dataset signature
+    _, ds1, ds2, ds3, ds4 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    dataset = ConcatDataset([ds1, ds2, ds3, ds4])
+
     dataset = _data_loader.TransformedDataset(
         dataset,
         [
+            # NOTE: make sure you understand which config you're using
             *data_config.repack_transforms.inputs,
             *data_config.data_transforms.inputs,
             # Remove strings since they are not supported by JAX and are not needed to compute norm stats.
@@ -53,7 +58,7 @@ def create_torch_dataloader(
     data_loader = _data_loader.TorchDataLoader(
         dataset,
         local_batch_size=batch_size,
-        num_workers=8,
+        num_workers=0,
         shuffle=shuffle,
         num_batches=num_batches,
     )
@@ -91,7 +96,11 @@ def create_rlds_dataloader(
 
 def main(config_name: str, max_frames: int | None = None):
     config = _config.get_config(config_name)
-    data_config = config.data.create(config.assets_dirs, config.model)
+    # TODO: choose config as needed
+    # data_config = config.data.create(config.assets_dirs, config.model)
+    # TODO: note I'm using data config 2, because it works better
+    data_config = config.data2.create(config.assets_dirs, config.model)
+
 
     if data_config.rlds_data_dir is not None:
         data_loader, num_batches = create_rlds_dataloader(

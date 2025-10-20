@@ -84,6 +84,7 @@ def create_trained_policy(
         output_transforms=[
             *data_config.model_transforms.outputs,
             transforms.Unnormalize(norm_stats, use_quantiles=data_config.use_quantile_norm),
+            # TODO: commented out for now! we will process the outputs ourselves
             *data_config.data_transforms.outputs,
             *repack_transforms.outputs,
         ],

@@ -60,6 +60,10 @@ class GalaxeaInputs(transforms.DataTransformFn):
 
         # Convert images to uint8 (H, W, C). Adjust keys if Galaxea stores images differently.
         base_image = _parse_image(data["image"])
+        # print("DATA KEYS:")
+        # print(data.keys())
+        wrist_image_left = _parse_image(data["wrist_image_left"])
+        wrist_image_right = _parse_image(data["wrist_image_right"])
         # TODO: add wrist image if available
         # TODO: how to deal with multiple datasets with varying camera views?
         # wrist_image = _parse_image(data["observation/wrist_image"])
@@ -69,15 +73,15 @@ class GalaxeaInputs(transforms.DataTransformFn):
             "state": state,
             "image": {
                 "base_0_rgb": base_image,
-                "left_wrist_0_rgb": np.zeros_like(base_image),
+                "left_wrist_0_rgb": wrist_image_left,
                 # Pad missing views with zeros if not available.
-                "right_wrist_0_rgb": np.zeros_like(base_image),
+                "right_wrist_0_rgb": wrist_image_right,
             },
             "image_mask": {
                 "base_0_rgb": np.True_,
-                "left_wrist_0_rgb": np.False_,  # TODO: double check hard-coded variable
+                "left_wrist_0_rgb": np.True_,  # TODO: double check hard-coded variable
                 # Mask missing views as False if masking is enabled
-                "right_wrist_0_rgb": np.False_ # TODO: double check hard-coded variable
+                "right_wrist_0_rgb": np.True_ # TODO: double check hard-coded variable
             },
         }
 

@@ -2,6 +2,8 @@
 usage:
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_mixed_kp --exp-name=test_multidataset --overwrite
 
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_galaxea_egodex_pick_place --exp-name=galaxea_egodex_pick_place --overwrite
+
 To run cluster command:
 
 sbatch -A iris -p iris -q normal train.sh

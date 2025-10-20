@@ -249,6 +249,7 @@ class Episode:
     N: int
 
 def _index_path(root_dir: str) -> str:
+    # TODO: undo my name!
     return os.path.join(root_dir, "episodes_index.jsonl")
 
 def _save_index(root_dir: str, episodes: list[Episode]) -> None:
@@ -316,6 +317,10 @@ class EgoDexSeqDataset(Dataset):
             "rightThumbTip","rightIndexFingerTip","rightMiddleFingerTip","rightRingFingerTip","rightLittleFingerTip",
         ]
 
+        self.left_tip_order  = ["leftThumbTip","leftIndexFingerTip","leftMiddleFingerTip","leftRingFingerTip","leftLittleFingerTip"]
+        self.right_tip_order = ["rightThumbTip","rightIndexFingerTip","rightMiddleFingerTip","rightRingFingerTip","rightLittleFingerTip"]
+
+
         # 1) collect (h5, mp4, N) per episode, with on-disk cache
         episodes: list[Episode] | None = None
         if not rebuild_index:
@@ -323,13 +328,15 @@ class EgoDexSeqDataset(Dataset):
             print("successfully loaded cached index:", len(episodes) if episodes else 0, "episodes")
 
             # ---- pick a fixed number of episodes per task ----
-            # TODO: change as needed (ideally delete for training)
-            episodes_per_task = 100        # <= choose how many per task
-            rng = random.Random(42)      # <= set seed for reproducibility (or remove)
+            # TODO: set max limit per task
+            episodes_per_task = 100
+            rng = random.Random(42)
+
+            # tasks you want to fully include
+            # TODO: include whatever task that is MOST important
+            include_all = {"vertical_pick_place"}  # <== edit this list
 
             def _task_name(ep: Episode) -> str:
-                # task is the folder right above the file, e.g.
-                # .../part3/open_close_insert_remove_case/811.hdf5  -> "open_close_insert_remove_case"
                 return os.path.basename(os.path.dirname(ep.h5))
 
             # group by task
@@ -337,19 +344,13 @@ class EgoDexSeqDataset(Dataset):
             for ep in episodes:
                 by_task.setdefault(_task_name(ep), []).append(ep)
 
-            # sample K per task (or all if fewer)
             picked: list[Episode] = []
             for task, eps in by_task.items():
-                if episodes_per_task is None:
-                    picked.extend(eps)  # NEW: no cap
+                rng.shuffle(eps)
+                if task in include_all:
+                    picked.extend(eps)  # take all episodes
                 else:
-                    rng.shuffle(eps)                 # simple random; remove if you prefer sorted order
-                    picked.extend(eps[:episodes_per_task])
-
-            # optional: shuffle overall, then cap with max_episodes if you also want a global limit
-            # rng.shuffle(picked)
-            # if (max_episodes is not None) and (len(picked) > max_episodes):
-            #     picked = picked[:max_episodes]
+                    picked.extend(eps[:episodes_per_task])  # take capped subset
 
             episodes = picked
 
@@ -363,8 +364,8 @@ class EgoDexSeqDataset(Dataset):
             )
 
             # TODO: comment me out!
-            # part_dirs = ["/iris/projects/humanoid/dataset/ego_dex/part1"]
-            print("found part dirs:", part_dirs)
+            # part_dirs = ["/iris/projects/humanoid/dataset/ego_dex/part5"]
+            # print("found part dirs:", part_dirs)
 
             for part in part_dirs:
                 part_path = os.path.join(root_dir, part)
@@ -394,7 +395,7 @@ class EgoDexSeqDataset(Dataset):
                             with h5py.File(h5f, "r") as f:
                                 N = int(f["transforms"]["leftHand"].shape[0])
                             if N >= self.H:
-                                print(h5f, mp4)
+                                print(h5f, mp4f)
                                 episodes.append(Episode(h5=h5f, mp4=mp4f, N=N))
                         except Exception:
                             continue
@@ -534,6 +535,44 @@ class EgoDexSeqDataset(Dataset):
         return rgb.astype(np.float32) / 255.0     # return native resolution, no resizing
 
 
+    def _pose_cam_pos6(self, f, name: str, t: int) -> tuple[np.ndarray, np.ndarray]:
+        """Return (pos3, rot6) of a transform in camera frame at time t."""
+        T_world_cam = f["transforms"]["camera"][t]
+        T_world_obj = f["transforms"][name][t]
+        T_cam = _pose_world_to_cam(T_world_obj, T_world_cam)
+        pos  = T_cam[:3, 3].astype(np.float32)
+        rot6 = _rotmat_to_rot6d(T_cam[:3, :3])
+        return pos, rot6
+
+    def _pose_cam_pos3(self, f, name: str, t: int) -> np.ndarray:
+        """pos3 in camera frame (zeros if missing)."""
+        if name not in f["transforms"]:
+            return np.zeros(3, np.float32)
+        T_world_cam = f["transforms"]["camera"][t]
+        T_world_obj = f["transforms"][name][t]
+        T_cam = _pose_world_to_cam(T_world_obj, T_world_cam)
+        return T_cam[:3, 3].astype(np.float32)
+
+    def _hand_action24(self, f, t: int, side: str) -> np.ndarray:
+        """(24,) = wrist pos3+rot6 + 5 fingertips (thumb→index→middle→ring→little) each xyz."""
+        wrist = "leftHand" if side == "left" else "rightHand"
+        pos, rot6 = self._pose_cam_pos6(f, wrist, t)
+        tip_names = self.left_tip_order if side == "left" else self.right_tip_order
+        tips = [self._pose_cam_pos3(f, n, t) for n in tip_names]  # 5×(3,)
+        tips_vec = np.concatenate(tips, dtype=np.float32)         # (15,)
+        return np.concatenate([pos, rot6, tips_vec], dtype=np.float32)  # (24,)
+
+    def _state_both30(self, f, t: int) -> np.ndarray:
+        """(30,) = L(pos3+rot6) + R(pos3+rot6) + L_thumb + L_index + R_thumb + R_index (each xyz)."""
+        Lp, Lr = self._pose_cam_pos6(f, "leftHand",  t)
+        Rp, Rr = self._pose_cam_pos6(f, "rightHand", t)
+        L_thumb = self._pose_cam_pos3(f, "leftThumbTip",        t)
+        L_index = self._pose_cam_pos3(f, "leftIndexFingerTip",  t)
+        R_thumb = self._pose_cam_pos3(f, "rightThumbTip",       t)
+        R_index = self._pose_cam_pos3(f, "rightIndexFingerTip", t)
+        return np.concatenate([Lp, Lr, Rp, Rr, L_thumb, L_index, R_thumb, R_index], dtype=np.float32)
+
+
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         ep_id, t0 = self.index[idx]
@@ -616,35 +655,21 @@ class EgoDexSeqDataset(Dataset):
                     z=z,
                     edges_by_name=edges_by_name,
                     color_of=color_of,
-                    pt_radius=8,
-                    line_thickness=3,
+                    pt_radius=11,
+                    line_thickness=8,
                     edge_segments=12,
                 )
                                                 
-            if self.state_format == "ego_split":
-                actions = np.stack([self._state_vec(f, t0 + dt) for dt in range(self.H)], axis=0)  # (H, D)
-                D = actions.shape[1]
-                if D != 48:
-                    raise ValueError(f"ego_split expects 48-D state before split, got {D}")
+            # --- Galaxea-compatible outputs (both-hands layout) ---
+            # Actions: [L24, R24, L24, R24, ...] for H steps -> (2*H, 24)
+            # State:   30-D  (L pos+rot6, R pos+rot6, L thumb+index, R thumb+index)
+            actions_lr = []
+            for dt in range(self.H):
+                actions_lr.append(self._hand_action24(f, t0 + dt, "left"))
+                actions_lr.append(self._hand_action24(f, t0 + dt, "right"))
+            actions = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*H, 24)
+            state   = self._state_both30(f, t0).astype(np.float32)     # (30,)
 
-                # Hard-coded split for ego_split -- TODO: corret me for the correct version
-                left_arm  = np.concatenate([actions[:, 0:9],  actions[:, 18:33]], axis=1)   # left wrist + left fingers
-                right_arm = np.concatenate([actions[:, 9:18], actions[:, 33:48]], axis=1)   # right wrist + right fingers
-                actions_split = np.empty((actions.shape[0] * 2, 24), dtype=np.float32)
-                actions_split[0::2] = left_arm
-                actions_split[1::2] = right_arm
-
-                # pad each token to 32-D
-                actions_out = np.zeros((actions_split.shape[0], 32), dtype=np.float32) # (H, 32)
-                actions_out[:, :24] = actions_split  # fill first 24, rest = zeros
-
-                state = actions_out[0].copy()  # first token as state
-                actions = actions_out
-            else:
-                # sequence of states for actions
-                actions = np.stack([self._state_vec(f, t0 + dt) for dt in range(self.H)], axis=0)  # (H, D)
-                actions = actions[:, :32]
-                state   = actions[0].copy()  # state at start
 
         # task = folder name (parent directory of the file)
         task = os.path.basename(os.path.dirname(h5_path))
@@ -681,18 +706,19 @@ class EgoDexSeqDataset(Dataset):
 # # === create dataset ===
 # ds = EgoDexSeqDataset(
 #     root_dir=root_dir,
-#     action_horizon=5,        # example horizon
+#     action_horizon=25,        # example horizon
 #     image_size=(224, 224),
-#     state_format="ego",      # or "ego"
+#     state_format="ego_split",      # or "ego"
 #     window_stride=1,
-#     traj_per_task = 1,
-#     overlay=True
+#     traj_per_task = None,
+#     overlay=True,
+#     rebuild_index=False,    # set True to rescan dataset
 # )
 
 # print(f"Dataset length: {len(ds)} samples")
 
 # # === test retrieval ===
-# num_samples_to_test = 30
+# num_samples_to_test = 10
 # indices = random.sample(range(len(ds)), num_samples_to_test)
 
 # for idx in indices:

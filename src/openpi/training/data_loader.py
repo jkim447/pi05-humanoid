@@ -204,55 +204,31 @@ def create_torch_dataset(
     # TODO: uncomment below!
     # Lazy import to avoid hard dependency unless used
     from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
-    dataset_dir = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"
-    galaxea_dataset = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir,
-                                chunk_size=action_horizon//2, stride = 3) # TODO: change stride as needed
-                                # TODO: action horizon // 2 is important if interleaving left and right actions
-
-    # ADD human data we've collected
-    from openpi.training.our_human_dataset import HumanDatasetKeypointsJoints
-    # TODO change these directories as needed
-    dir1 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox"
-    dir2 = "/iris/projects/humanoid/hamer/keypoint_human_data_red_outbox"
-    dir3 = "/iris/projects/humanoid/hamer/keypoint_human_data_wood_inbox"
-    custom_instruction = "place wood cube into box" # TODO double check which instruction goes with which dataset
-
-    ds1 = HumanDatasetKeypointsJoints(
-        dataset_dir=dir1,
-        chunk_size=action_horizon//2,
-        stride=1,
-        img_height=224,
-        img_width=224,
-        overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
-    )
-
-    ds2 = HumanDatasetKeypointsJoints(
-        dataset_dir=dir2,
-        chunk_size=action_horizon//2,
-        stride=1,
-        img_height=224,
-        img_width=224,
-        overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
-    )
-
-    ds3 = HumanDatasetKeypointsJoints(
-        dataset_dir=dir3,
-        chunk_size=action_horizon//2,
-        stride=1,
-        img_height=224,
-        img_width=224,
-        overlay=overlay, # TODO: check this option!   # draws wrist + 5 tips on the resized left image
-        custom_instruction=custom_instruction, # TODO: note I'm using custom_instruction for the wooden block
-    )
-
-    # Concatenate them
-    return egodex_dataset, galaxea_dataset, ds1, ds2, ds3
-
-    # TODO: delete me for training1
-    # return egodex_dataset #, galaxea_dataset, ds1, ds2, ds3
+    dataset_dir1 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana"
+    dataset_dir2 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/long_green_cube"
+    dataset_dir3 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/small_blue_cube"
+    dataset_dir4 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck"
 
 
+    # TODO: add more datasets for galaxea
+    gd1 = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir1,
+                                chunk_size=action_horizon//2, stride = 3, # TODO: change stride as needed
+                                overlay = overlay) # TODO: action horizon // 2 is important if interleaving left and right actions
 
+    gd2 = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir2,
+                                chunk_size=action_horizon//2, stride = 3, # TODO: change stride as needed
+                                overlay = overlay) # TODO: action horizon // 2 is important if interleaving left and right actions
+    
+    gd3 = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir3,
+                                chunk_size=action_horizon//2, stride = 3, # TODO: change stride as needed
+                                overlay = overlay) # TODO: action horizon // 2 is important if interleaving left and right actions
+    
+    gd4 = GalaxeaDatasetKeypointsJoints(dataset_dir = dataset_dir4,
+                                chunk_size=action_horizon//2, stride = 3, # TODO: change stride as needed
+                                overlay = overlay) # TODO: action horizon // 2 is important if interleaving left and right actions
+    
+
+    return egodex_dataset, gd1, gd2, gd3, gd4
 
 def create_rlds_dataset(
     data_config: _config.DataConfig,
@@ -276,12 +252,14 @@ def transform_dataset(dataset: Dataset, data_config: _config.DataConfig, *, skip
     """Transform the dataset by applying the data transforms."""
     norm_stats = {}
     if data_config.repo_id != "fake" and not skip_norm_stats:
+        print("repo id:", data_config.repo_id)
         if data_config.norm_stats is None:
             raise ValueError(
                 "Normalization stats not found. "
                 "Make sure to run `scripts/compute_norm_stats.py --config-name=<your-config>`."
             )
         norm_stats = data_config.norm_stats
+        print("HEY I've loaded the normalization stats! for repo:", data_config.repo_id)
 
     return TransformedDataset(
         dataset,
@@ -406,28 +384,28 @@ def create_torch_data_loader(
         seed: The seed to use for shuffling the data.
     """
 
-    egodex_dataset, galaxea_dataset, ds1, ds2, ds3 = create_torch_dataset(data_config, action_horizon, model_config)
+    egodex_dataset, ds1, ds2, ds3, ds4 = create_torch_dataset(data_config, action_horizon, model_config)
     egodex_dataset = transform_dataset(egodex_dataset, data_config, skip_norm_stats=skip_norm_stats)
-    galaxea_dataset = transform_dataset(galaxea_dataset, data_config2, skip_norm_stats=skip_norm_stats)
-
-    # NOTE and WARNING: I'm using the same data_config as the egodex dataset for now, this might cause issues, be vigilant.
-    ds1 = transform_dataset(ds1, data_config, skip_norm_stats=skip_norm_stats)
-    ds2 = transform_dataset(ds2, data_config, skip_norm_stats=skip_norm_stats)
-    ds3 = transform_dataset(ds3, data_config, skip_norm_stats=skip_norm_stats)
+    # NOTE I'm using dataconfig2 here
+    ds1 = transform_dataset(ds1, data_config2, skip_norm_stats=skip_norm_stats)
+    ds2 = transform_dataset(ds2, data_config2, skip_norm_stats=skip_norm_stats)
+    ds3 = transform_dataset(ds3, data_config2, skip_norm_stats=skip_norm_stats)
+    ds4 = transform_dataset(ds4, data_config2, skip_norm_stats=skip_norm_stats)
+    
     print("I've loaded and transformed all datasets!")
 
     # 1) pick target mix; must sum to 1
-    # TOO
+    # TODO: ensure distribution looks good
     target_p = {
         "egodex": 0.75,
-        "galaxea": 0.13,
-        "ds1":     0.04,
-        "ds2":     0.04,
-        "ds3":     0.04,
+        "ds1":     0.0625,
+        "ds2":     0.0625,
+        "ds3":     0.0625,
+        "ds4":     0.0625,
     }
 
-    lengths = [len(egodex_dataset), len(galaxea_dataset), len(ds1), len(ds2), len(ds3)]
-    pks     = [target_p["egodex"],   target_p["galaxea"],  target_p["ds1"], target_p["ds2"], target_p["ds3"]]
+    lengths = [len(egodex_dataset), len(ds1), len(ds2), len(ds3), len(ds4)]
+    pks     = [target_p["egodex"],   target_p["ds1"],  target_p["ds2"], target_p["ds3"], target_p["ds4"]]
 
     # 2) per-sample weights: w_k ∝ p_k / n_k
     w = []
@@ -440,14 +418,12 @@ def create_torch_data_loader(
     # 3) choose an "epoch" length (how many draws per epoch)
     epoch_samples = sum(lengths)  # or any value you like
 
-    dataset = ConcatDataset([egodex_dataset, galaxea_dataset, ds1, ds2, ds3])
+    # TODO: uncomment if co-training on all datasets
+    dataset = ConcatDataset([egodex_dataset, ds1, ds2, ds3, ds4])
+    # TODO: if using a single dataset
+    # dataset = galaxea_dataset
     # dataset = ConcatDataset([egodex_dataset, galaxea_dataset])
-
-    if not skip_norm_stats:
-        print("We are normalizing the data")
-    else:
-        print("We are NOT normalizing the data")
-
+    
     # Use TorchDataLoader for both frameworks
     # For PyTorch DDP, create DistributedSampler and divide batch size by world size
     # For JAX, divide by process count
@@ -466,20 +442,18 @@ def create_torch_data_loader(
             local_batch_size = batch_size
     else:
         local_batch_size = batch_size // jax.process_count()
+    
+    # TODO: use me if training on a single dataset
+    # sampler = None
 
-    # TODO: we are overwriting the sampler above, need to fix this
-    # sampler = WeightedRandomSampler(
-    #     weights=weights,
-    #     num_samples=epoch_samples,  # controls epoch length
-    #     replacement=True,           # enables true sampling by weights
-    # )
-
+    # TODO: use me if using multi-dataset
     sampler = MixtureSampler(
         lengths=lengths,
         probs=pks,                 # your target_p values in the same order as lengths
         num_samples=epoch_samples,
         generator=torch.Generator().manual_seed(seed),
     )
+
 
     logging.info(f"local_batch_size: {local_batch_size}")
     data_loader = TorchDataLoader(

@@ -223,6 +223,29 @@ class DeltaActions(DataTransformFn):
 
 
 @dataclasses.dataclass(frozen=True)
+class DeltaActionsFromFirst(DataTransformFn):
+    """Repack actions into deltas relative to the first action: a[t] := a[t] - a[0] for masked dims."""
+
+    mask: Sequence[bool] | None
+
+    def __call__(self, data: DataDict) -> DataDict:
+        if "actions" not in data or self.mask is None:
+            return data
+
+        actions = data["actions"]                   # shape (..., H, D)
+        mask = np.asarray(self.mask)
+        dims = mask.shape[-1]
+
+        baseline = actions[..., 0, :dims].copy()    # shape (..., dims)
+        baseline = np.where(mask, baseline, 0)      # shape (..., dims)
+        baseline = np.expand_dims(baseline, axis=-2)  # shape (..., 1, dims)
+
+        actions[..., :dims] -= baseline
+        data["actions"] = actions
+        return data
+
+
+@dataclasses.dataclass(frozen=True)
 class AbsoluteActions(DataTransformFn):
     """Repacks delta actions into absolute action space."""
 
