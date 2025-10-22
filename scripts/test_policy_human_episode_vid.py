@@ -143,10 +143,10 @@ from openpi.policies import policy_config
 from openpi.shared import download
 
 def _load_policy():
-    conf     = cfg.get_config("pi05_egodex")
+    conf     = cfg.get_config("pi05_galaxea_egodex_pick_place")
     # change if you want a different checkpoint
     # ckpt_dir = download.maybe_download("checkpoints/pi05_mixed/my_experiment_co_training/35000")
-    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_mixed_kp/co_training_kp/63000")
+    ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_pick_place/galaxea_egodex_pick_place_delta_native/10000")
     return policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ---------- main ----------

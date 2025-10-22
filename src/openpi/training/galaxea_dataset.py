@@ -453,6 +453,90 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.index)
 
+    def _fk_points_world_and_wristT(self, row, side: str, kind: str = "actual"):
+        """Return:
+            pts_world: {link_name -> (3,)} world positions for links of `side`
+            T_wrist_world: (4,4) wrist pose in world (rotation+translation)
+        """
+        # EE -> HAND
+        if side == "left":
+            T_ee = _pose_to_T([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]],
+                            [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]])
+            T_hand = T_ee @ T_EE_TO_HAND_L
+            robot, joint_names, prefix, wrist_name = self.robot_l, self.left_joint_names, "ll_", WRIST_L
+            T_hand = _apply_vis_offset(T_hand, VIS_OFFSET_L)
+        else:
+            T_ee = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
+                            [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]])
+            T_hand = T_ee @ T_EE_TO_HAND_R
+            robot, joint_names, prefix, wrist_name = self.robot_r, self.right_joint_names, "rl_", WRIST_R
+            T_hand = _apply_vis_offset(T_hand, VIS_OFFSET_R)
+
+        angles = self._get_joint_angles20(row, side, kind)  # "actual" or "cmd"
+        fk = robot.link_fk(cfg=dict(zip(joint_names, angles)), use_names=True)
+
+        T_fkbase_inv = np.linalg.inv(fk.get("FK_base", np.eye(4)))
+
+        # Collect world positions and also compute wrist world transform
+        pts_world = {}
+        T_wrist_world = None
+        for link_name, T_link_model in fk.items():
+            if not link_name.startswith(prefix):
+                continue
+            T_link_in_hand = T_fkbase_inv @ T_link_model
+            T_world = T_hand @ T_link_in_hand
+            if link_name == wrist_name:
+                T_wrist_world = T_world.copy()
+            xyz = T_world[:3, 3]
+            if np.all(np.isfinite(xyz)):
+                pts_world[link_name] = xyz
+
+        # Fallback if wrist wasn't found for some reason
+        if T_wrist_world is None:
+            T_wrist_world = T_hand
+
+        return pts_world, T_wrist_world
+
+
+    def _tips_in_wrist_frame(self, pts_map_world: dict, T_wrist_world: np.ndarray, side: str) -> np.ndarray:
+        """Return 15D [thumb..pinky] tip positions in wrist local frame."""
+        tips = TIP_LINKS_L if side == "left" else TIP_LINKS_R
+        Rw = T_wrist_world[:3, :3]
+        tw = T_wrist_world[:3, 3]
+        out = []
+        for link in tips:
+            if link not in pts_map_world:
+                out.extend([np.nan, np.nan, np.nan])
+            else:
+                pw = pts_map_world[link]
+                plocal = Rw.T @ (pw - tw)
+                out.extend(plocal.astype(np.float32))
+        return np.asarray(out, dtype=np.float32)  # (15,)
+
+
+    def _row_to_hand_action15_local(self, row, side: str, kind: str = "cmd") -> np.ndarray:
+        """
+        15D fingertip positions (thumb->pinky) expressed in the wrist local frame.
+        """
+        pts_world, T_wrist_world = self._fk_points_world_and_wristT(row, side, kind=kind)
+        return self._tips_in_wrist_frame(pts_world, T_wrist_world, side)  # (15,)
+
+    def _row_to_hand_action24_mixed(self, row, side: str, kind: str = "cmd") -> np.ndarray:
+        """
+        Returns 24D:
+        [ wrist_pos_in_left_cam(3), wrist_ori6d_in_left_cam(6), fingertips_local_wrt_wrist(15) ]
+        kind: "cmd" or "actual" joint angles for FK.
+        """
+        # wrist in camera frame
+        p_cam, ori6d = self._row_wrist_pose6d_in_left_cam(row, side)
+
+        # fingertips in wrist local frame
+        pts_world, T_wrist_world = self._fk_points_world_and_wristT(row, side, kind=kind)
+        tip15_local = self._tips_in_wrist_frame(pts_world, T_wrist_world, side)
+
+        return np.concatenate([p_cam, ori6d, tip15_local], axis=0).astype(np.float32)  # (24,)
+
+
     # --- helpers: pick commanded vs actual joints safely ---
     def _get_joint_cols(self, side: str, kind: str) -> list[str]:
         if side == "left":
@@ -723,22 +807,23 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         wrist_image_left  = self._resize_norm_rgb(img_bgr_left_wrist)[::-1, ::-1, :]
         wrist_image_right = self._resize_norm_rgb(img_bgr_right_wrist)
 
-        # baselines at t0 (actual)
+        # baselines at t0 (actual): full 24D per hand (pos+ori in cam, tips in wrist local)
         row0   = df.iloc[t0]
-        base_L = self._row_to_hand_action24(row0, "left",  kind="actual")
-        base_R = self._row_to_hand_action24(row0, "right", kind="actual")
+        base_L = self._row_to_hand_action24_mixed(row0, "left",  kind="actual")
+        base_R = self._row_to_hand_action24_mixed(row0, "right", kind="actual")
 
-        # build tokens with zero padding beyond episode_len
+        # build tokens with zero padding beyond episode_len, interleaving L/R per step
         tokens, action_mask = [], []
         for k in range(self.chunk_size):
-            t = start_ts + k * self.stride # TODO shouldn't start_ts be t0?
+            t = start_ts + k * self.stride
             if t < episode_len:
                 row   = df.iloc[t]
-                aLcmd = self._row_to_hand_action24(row, "left",  kind="cmd")
-                aRcmd = self._row_to_hand_action24(row, "right", kind="cmd")
-                # choose relative or absolute; here relative to base at t0:
-                relL  = (aLcmd - base_L).astype(np.float32)
-                relR  = (aRcmd - base_R).astype(np.float32)
+                aL = self._row_to_hand_action24_mixed(row, "left",  kind="cmd")
+                aR = self._row_to_hand_action24_mixed(row, "right", kind="cmd")
+
+                # relative to first (t0) action in the chunk
+                relL = (aL - base_L).astype(np.float32)
+                relR = (aR - base_R).astype(np.float32)
 
                 tokens.extend([relL, relR])
                 action_mask.extend([1.0, 1.0])
@@ -748,24 +833,29 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
         actions = np.stack(tokens, axis=0).astype(np.float32)  # (2*chunk_size, 24)
 
-        # 30D state at t0 (unchanged)
+        # wrist pos+6D ori in camera (unchanged)
         pL, oL = self._row_wrist_pose6d_in_left_cam(row0, "left")
         pR, oR = self._row_wrist_pose6d_in_left_cam(row0, "right")
-        ptsL = self._fk_points_world(row0, "left",  kind="actual")
-        ptsR = self._fk_points_world(row0, "right", kind="actual")
-        L_thumb = self._world_to_cam3(ptsL[TIP_LINKS_L[0]]) if TIP_LINKS_L[0] in ptsL else np.zeros(3, np.float32)
-        L_index = self._world_to_cam3(ptsL[TIP_LINKS_L[1]]) if TIP_LINKS_L[1] in ptsL else np.zeros(3, np.float32)
-        R_thumb = self._world_to_cam3(ptsR[TIP_LINKS_R[0]]) if TIP_LINKS_R[0] in ptsR else np.zeros(3, np.float32)
-        R_index = self._world_to_cam3(ptsR[TIP_LINKS_R[1]]) if TIP_LINKS_R[1] in ptsR else np.zeros(3, np.float32)
 
-        state = np.concatenate([pL, oL, pR, oR, L_thumb, L_index, R_thumb, R_index], axis=0).astype(np.float32)
+        # fingertip positions in wrist local frame (actual)
+        ptsL_world, T_L_wrist = self._fk_points_world_and_wristT(row0, "left",  kind="actual")
+        ptsR_world, T_R_wrist = self._fk_points_world_and_wristT(row0, "right", kind="actual")
+        tipsL_local = self._tips_in_wrist_frame(ptsL_world, T_L_wrist, "left")   # [thumb(0:3), index(3:6), ...]
+        tipsR_local = self._tips_in_wrist_frame(ptsR_world, T_R_wrist, "right")
+
+        L_thumb = tipsL_local[0:3] if np.all(np.isfinite(tipsL_local[0:3])) else np.zeros(3, np.float32)
+        L_index = tipsL_local[3:6] if np.all(np.isfinite(tipsL_local[3:6])) else np.zeros(3, np.float32)
+        R_thumb = tipsR_local[0:3] if np.all(np.isfinite(tipsR_local[0:3])) else np.zeros(3, np.float32)
+        R_index = tipsR_local[3:6] if np.all(np.isfinite(tipsR_local[3:6])) else np.zeros(3, np.float32)
+
+        state = np.concatenate([pL, oL, pR, oR, L_thumb, L_index, R_thumb, R_index], axis=0).astype(np.float32)  # (30,)
 
         return {
             "image": image.astype(np.float32),
             "wrist_image_left":  wrist_image_left.astype(np.float32),
             "wrist_image_right": wrist_image_right.astype(np.float32),
             "state": state,                                  # (30,)
-            "actions": actions,                              # (2*chunk_size, 24)
+            "actions": actions,                              # (2*chunk_size, 24): [pos_cam(3), ori6d(6), tips_local(15)]
             "task": "vertical_pick_place",
         }
 

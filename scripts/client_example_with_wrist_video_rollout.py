@@ -423,14 +423,12 @@ for step in range(num_steps):
 
 
     # 2) Policy actions: take odd timesteps only (1,3,5,...), first 3 dims are xyz
-    print(action_chunk.shape)
-    act_xyz = action_chunk[1::2, 0:3]  # shape (25, 3) if action_chunk is (50, 32)
-    print("gt", gt_xyz[0:3])
-    act_xyz = act_xyz + state[9:12]
-    # print("gt:", gt_xyz[0, 0:3])
-    print("output", act_xyz[0:3])
-    print("state", state[9:12])
-    # print("after:", act_xyz[0:3])
+    act_xyz = action_chunk[1::2, 0:3] + state[9:12] # shape (25, 3) if action_chunk is (50, 32)
+    r_thumb = action_chunk[1::2, 9:12] + state[24:27]
+    r_index = action_chunk[1::2, 12:15] + state[27:30]
+    # r_middle =  action_chunk[1::2, 15:18]
+    # r_ring =   action_chunk[1::2, 18:21]
+    # r_pinky = action_chunk[1::2, 21:24]
     
 
     # 3) Quick 3D plot and save
@@ -483,6 +481,25 @@ for step in range(num_steps):
         _DRAW_RED   = (0,   0, 255)
         _draw_path(img_draw, px_gt,   _DRAW_GREEN, thickness=2, radius=2)
         _draw_path(img_draw, px_pred, _DRAW_RED,   thickness=2, radius=2)
+
+        # --- fingertip overlays (explicit args) ---
+        def _draw_fingertip_overlay(img, cam_xyz_seq, K, color_bgr, label, offset_y):
+            mZ = cam_xyz_seq[:, 2] > 1e-6
+            pts3 = cam_xyz_seq[mZ]
+            if len(pts3) == 0:
+                return
+            px = _project_cam_to_px(pts3, K)
+            m_in = _in_bounds(px, img.shape[1], img.shape[0])
+            px = px[m_in].astype(np.int32)
+            _draw_path(img, px, color_bgr, thickness=2, radius=2)
+            cv2.putText(img, label, (20, offset_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color_bgr, 2, cv2.LINE_AA)
+
+        # --- call fingertip overlays on same img_draw ---
+        _DRAW_BLUE  = (255, 0, 0)
+        _DRAW_YELLOW = (0, 255, 255)
+        _draw_fingertip_overlay(img_draw, r_thumb, K_vis, _DRAW_BLUE, "Pred right thumb", 85)
+        _draw_fingertip_overlay(img_draw, r_index, K_vis, _DRAW_YELLOW, "Pred right index", 110)
+
 
         # legend + save
         cv2.rectangle(img_draw, (10, 10), (260, 70), (255, 255, 255), -1)
