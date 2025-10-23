@@ -1,7 +1,8 @@
 """Compute normalization statistics for a config.
 
 usage:
-uv run scripts/compute_norm_stats.py --config-name pi05_egodex
+uv run scripts/compute_norm_stats_egodex.py --config-name pi05_galaxea_egodex_wrist_centric
+
 
 This script is used to compute the normalization statistics for a given config. It
 will compute the mean and standard deviation of the data in the dataset and save it

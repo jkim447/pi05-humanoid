@@ -20,12 +20,12 @@ client = websocket_client_policy.WebsocketClientPolicy(host="10.79.12.252", port
 print("im here2")
 
 num_steps = 1
-idx = 40
+idx = 10
 # specify img path
-csv_path = "/iris/projects/humanoid/openpi/scripts/demo_0_example/ee_hand.csv"
-img_path = f"/iris/projects/humanoid/openpi/scripts/demo_0_example/left/{idx:06d}.jpg"
-left_wrist_img_path = f"/iris/projects/humanoid/openpi/scripts/demo_0_example/left_wrist/{idx:06d}.jpg"
-right_wrist_img_path = f"/iris/projects/humanoid/openpi/scripts/demo_0_example/right_wrist/{idx:06d}.jpg"
+csv_path = "/iris/projects/humanoid/openpi/scripts/demo_0_test/ee_hand.csv"
+img_path = f"/iris/projects/humanoid/openpi/scripts/demo_0_test/left/{idx:06d}.jpg"
+left_wrist_img_path = f"/iris/projects/humanoid/openpi/scripts/demo_0_test/left_wrist/{idx:06d}.jpg"
+right_wrist_img_path = f"/iris/projects/humanoid/openpi/scripts/demo_0_test/right_wrist/{idx:06d}.jpg"
 # read imgs
 img = cv2.imread(img_path)
 lw_img = cv2.imread(left_wrist_img_path)

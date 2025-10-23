@@ -1,8 +1,7 @@
 """
 usage:
 
-uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_galaxea_egodex_pick_place --policy.dir=/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_pick_place/galaxea_egodex_pick_place/20000
-"""
+uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_galaxea_egodex_pick_place --policy.dir=/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_pick_place/galaxea_egodex_pick_place_delta_native/10000"""
 
 import dataclasses
 import enum

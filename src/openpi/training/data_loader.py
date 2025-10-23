@@ -203,7 +203,6 @@ def create_torch_dataset(
         overlay = overlay)
 
     # TODO: uncomment below!
-    # Lazy import to avoid hard dependency unless used
     from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
     dataset_dir1 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana"
     dataset_dir2 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/long_green_cube"

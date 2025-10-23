@@ -328,15 +328,15 @@ class EgoDexSeqDataset(Dataset):
             print("successfully loaded cached index:", len(episodes) if episodes else 0, "episodes")
 
             # ---- pick a fixed number of episodes per task ----
-            # TODO: set max limit per task
+            # TODO: when computing norm stats, might want to reduce to 25 or something 
             episodes_per_task = 100
             rng = random.Random(42)
 
             # tasks you want to fully include
             # TODO: include whatever task that is MOST important
-            # TODO: undo before training!
-            include_all = {"vertical_pick_place"}  # <== edit this list
-            # include_all = {}
+            # TODO: when computing norm stats, comment out include all. When training though, activate it as needed
+            include_all = {"vertical_pick_place", "stack"}  # <== edit this list
+            include_all = {}
 
             def _task_name(ep: Episode) -> str:
                 return os.path.basename(os.path.dirname(ep.h5))
@@ -518,9 +518,6 @@ class EgoDexSeqDataset(Dataset):
         tips_vec = np.concatenate(tips, dtype=np.float32)  # 30
         return np.concatenate([wrists_vec, tips_vec], dtype=np.float32)  # 48
 
-    def _state_vec(self, f: h5py.File, t: int) -> np.ndarray:
-        return self._state_ego(f, t) if self.state_format in ("ego", "ego_split") else self._state_pi0(f, t)
-
     # ---- IO helpers ----
     def _read_rgb(self, mp4_path: str, t: int) -> np.ndarray:
         cap = cv2.VideoCapture(mp4_path)
@@ -557,25 +554,77 @@ class EgoDexSeqDataset(Dataset):
         T_cam = _pose_world_to_cam(T_world_obj, T_world_cam)
         return T_cam[:3, 3].astype(np.float32)
 
+    def _tips_in_wrist_frame(self, f, t: int, side: str) -> np.ndarray:
+        """
+        Return (15,) fingertip positions [thumb→pinky] in the wrist *local frame*.
+        """
+        wrist_name = "leftHand" if side == "left" else "rightHand"
+        tip_names = self.left_tip_order if side == "left" else self.right_tip_order
+
+        # wrist transform in world frame
+        T_world_wrist = f["transforms"][wrist_name][t]
+        R_wrist = T_world_wrist[:3, :3]
+        t_wrist = T_world_wrist[:3, 3]
+
+        tips_local = []
+        for tip in tip_names:
+            if tip not in f["transforms"]:
+                tips_local.extend([0, 0, 0])
+                continue
+            T_world_tip = f["transforms"][tip][t]
+            p_tip_world = T_world_tip[:3, 3]
+            p_tip_local = R_wrist.T @ (p_tip_world - t_wrist)
+            tips_local.extend(p_tip_local.astype(np.float32))
+        return np.asarray(tips_local, dtype=np.float32)  # (15,)
+
+
+    # def _hand_action24(self, f, t: int, side: str) -> np.ndarray:
+    #     """(24,) = wrist pos3+rot6 + 5 fingertips (thumb→index→middle→ring→little) each xyz."""
+    #     wrist = "leftHand" if side == "left" else "rightHand"
+    #     pos, rot6 = self._pose_cam_pos6(f, wrist, t)
+    #     tip_names = self.left_tip_order if side == "left" else self.right_tip_order
+    #     tips = [self._pose_cam_pos3(f, n, t) for n in tip_names]  # 5×(3,)
+    #     tips_vec = np.concatenate(tips, dtype=np.float32)         # (15,)
+    #     return np.concatenate([pos, rot6, tips_vec], dtype=np.float32)  # (24,)
+
     def _hand_action24(self, f, t: int, side: str) -> np.ndarray:
-        """(24,) = wrist pos3+rot6 + 5 fingertips (thumb→index→middle→ring→little) each xyz."""
+        """
+        (24,) = wrist pos3+rot6 (camera frame) + 5 fingertips (thumb→index→middle→ring→little)
+        each xyz, *defined in the wrist local frame*.
+        """
         wrist = "leftHand" if side == "left" else "rightHand"
         pos, rot6 = self._pose_cam_pos6(f, wrist, t)
-        tip_names = self.left_tip_order if side == "left" else self.right_tip_order
-        tips = [self._pose_cam_pos3(f, n, t) for n in tip_names]  # 5×(3,)
-        tips_vec = np.concatenate(tips, dtype=np.float32)         # (15,)
-        return np.concatenate([pos, rot6, tips_vec], dtype=np.float32)  # (24,)
+        tip15_local = self._tips_in_wrist_frame(f, t, side)
+        return np.concatenate([pos, rot6, tip15_local], dtype=np.float32)
+
+    # def _state_both30(self, f, t: int) -> np.ndarray:
+    #     """(30,) = L(pos3+rot6) + R(pos3+rot6) + L_thumb + L_index + R_thumb + R_index (each xyz)."""
+    #     Lp, Lr = self._pose_cam_pos6(f, "leftHand",  t)
+    #     Rp, Rr = self._pose_cam_pos6(f, "rightHand", t)
+    #     L_thumb = self._pose_cam_pos3(f, "leftThumbTip",        t)
+    #     L_index = self._pose_cam_pos3(f, "leftIndexFingerTip",  t)
+    #     R_thumb = self._pose_cam_pos3(f, "rightThumbTip",       t)
+    #     R_index = self._pose_cam_pos3(f, "rightIndexFingerTip", t)
+    #     return np.concatenate([Lp, Lr, Rp, Rr, L_thumb, L_index, R_thumb, R_index], dtype=np.float32)
 
     def _state_both30(self, f, t: int) -> np.ndarray:
-        """(30,) = L(pos3+rot6) + R(pos3+rot6) + L_thumb + L_index + R_thumb + R_index (each xyz)."""
+        """
+        (30,) = L(pos3+rot6) + R(pos3+rot6)
+                + L_thumb(3) + L_index(3) + R_thumb(3) + R_index(3)
+        with thumb/index in *wrist local frames*.
+        """
         Lp, Lr = self._pose_cam_pos6(f, "leftHand",  t)
         Rp, Rr = self._pose_cam_pos6(f, "rightHand", t)
-        L_thumb = self._pose_cam_pos3(f, "leftThumbTip",        t)
-        L_index = self._pose_cam_pos3(f, "leftIndexFingerTip",  t)
-        R_thumb = self._pose_cam_pos3(f, "rightThumbTip",       t)
-        R_index = self._pose_cam_pos3(f, "rightIndexFingerTip", t)
-        return np.concatenate([Lp, Lr, Rp, Rr, L_thumb, L_index, R_thumb, R_index], dtype=np.float32)
 
+        tipsL = self._tips_in_wrist_frame(f, t, "left")
+        tipsR = self._tips_in_wrist_frame(f, t, "right")
+
+        L_thumb = tipsL[0:3]
+        L_index = tipsL[3:6]
+        R_thumb = tipsR[0:3]
+        R_index = tipsR[3:6]
+
+        return np.concatenate([Lp, Lr, Rp, Rr, L_thumb, L_index, R_thumb, R_index], dtype=np.float32)
 
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:

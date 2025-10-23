@@ -8,6 +8,8 @@
 #SBATCH --time=72:00:00
 #SBATCH --mem=1000G                  # adjust if you need less/more
 #SBATCH --cpus-per-task=64          # tune if you want more data-loader threads
+#SBATCH --mail-user=jwbkim@stanford.edu
+#SBATCH --mail-type=ALL
 
 set -e
 
@@ -19,7 +21,8 @@ source .venv/bin/activate
 source set_env.sh 
 
 # run training
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 \
-uv run scripts/train.py pi05_galaxea_egodex_pick_place \
-    --exp-name=galaxea_egodex_pick_place_delta_native_corrected_language_instruction \
+uv run scripts/train.py pi05_galaxea_egodex_wrist_centric \
+    --exp-name=galaxea_egodex_wrist_centric \
     --overwrite
