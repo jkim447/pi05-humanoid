@@ -3,6 +3,8 @@
 usage:
 uv run scripts/compute_norm_stats_galaxea.py --config-name pi05_galaxea_egodex_wrist_centric
 
+uv run scripts/compute_norm_stats_galaxea.py --config-name pi05_galaxea_egodex_joints
+
 This script is used to compute the normalization statistics for a given config. It
 will compute the mean and standard deviation of the data in the dataset and save it
 to the config assets directory.
@@ -36,8 +38,8 @@ def create_torch_dataloader(
         raise ValueError("Data config must have a repo_id")
     # dataset = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
     # TODO: revise this accordingly to your dataset signature
-    _, ds1, ds2, ds3, ds4 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
-    dataset = ConcatDataset([ds1, ds2, ds3, ds4])
+    _, ds1, ds2, ds3, ds4, ds5 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    dataset = ConcatDataset([ds1, ds2, ds3, ds4, ds5])
 
     dataset = _data_loader.TransformedDataset(
         dataset,

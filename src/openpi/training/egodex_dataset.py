@@ -11,7 +11,18 @@ import json
 from dataclasses import asdict, dataclass
 import random
 from openpi.training.hand_keypoints_config import LEFT_FINGERS, RIGHT_FINGERS, JOINT_COLOR_BGR
+from openpi.training.human2robot import hand_joint_cmd20_from_h5
 
+def rot_x(theta): 
+    c, s = np.cos(theta), np.sin(theta)
+    return np.array([[1,0,0],[0,c,-s],[0,s,c]], np.float32)
+
+def rot_y(theta): 
+    c, s = np.cos(theta), np.sin(theta)
+    return np.array([[c,0,s],[0,1,0],[-s,0,c]], np.float32)
+
+RC_LEFT_OFFSET  = rot_x(np.pi) @ rot_y(-np.pi/2)   # X180°, Y-90°
+RC_RIGHT_OFFSET = rot_x(np.pi) @ rot_y(+np.pi/2)   # X180°, Y+90°
 
 LEFT_MANO_21 = [
     # "leftHand",
@@ -336,7 +347,8 @@ class EgoDexSeqDataset(Dataset):
             # TODO: include whatever task that is MOST important
             # TODO: when computing norm stats, comment out include all. When training though, activate it as needed
             include_all = {"vertical_pick_place", "stack"}  # <== edit this list
-            include_all = {}
+            # include_all = {"vertical_pick_place"}  # <== edit this list
+            # include_all = {}
 
             def _task_name(ep: Episode) -> str:
                 return os.path.basename(os.path.dirname(ep.h5))
@@ -626,6 +638,28 @@ class EgoDexSeqDataset(Dataset):
 
         return np.concatenate([Lp, Lr, Rp, Rr, L_thumb, L_index, R_thumb, R_index], dtype=np.float32)
 
+    # ---------- define offset helpers once near top ----------
+    def _pose_cam_pos6_offset(self, f, name: str, t: int):
+        """
+        Same as _pose_cam_pos6 but applies wrist orientation offsets
+        so EgoDex matches robot convention.
+        """
+        T_world_cam = f["transforms"]["camera"][t]
+        T_world_obj = f["transforms"][name][t]
+        T_cam = _pose_world_to_cam(T_world_obj, T_world_cam)
+
+        pos = T_cam[:3, 3].astype(np.float32)
+        Rm  = T_cam[:3, :3]
+
+        # apply orientation offset only for wrists
+        if name == "leftHand":
+            Rm = Rm @ RC_LEFT_OFFSET
+        elif name == "rightHand":
+            Rm = Rm @ RC_RIGHT_OFFSET
+
+        rot6 = np.array([Rm[0,0], Rm[1,0], Rm[2,0], Rm[0,1], Rm[1,1], Rm[2,1]], np.float32)
+        return pos, rot6
+
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         ep_id, t0 = self.index[idx]
@@ -714,33 +748,42 @@ class EgoDexSeqDataset(Dataset):
                     edge_segments=12,
                 )
                                                 
-            # --- Galaxea-compatible outputs (both-hands layout) ---
-            # Actions (relative): [L24, R24, L24, R24, ...] for H steps -> (2*H, 24)
-            # State: 30-D (unchanged)
-            # baselines at t0
-            base_L = self._hand_action24(f, t0, "left")
-            base_R = self._hand_action24(f, t0, "right")
+            # --- Actions & State (robot-style) ---
+            Lp0, Lr0 = self._pose_cam_pos6_offset(f, "leftHand",  t0)
+            Rp0, Rr0 = self._pose_cam_pos6_offset(f, "rightHand", t0)
+
+            qL0 = hand_joint_cmd20_from_h5(f, t0, "left")
+            qR0 = hand_joint_cmd20_from_h5(f, t0, "right")
 
             actions_lr = []
-            # optional: a mask to mark valid timesteps (1 = valid, 0 = padded)
-            valid_mask = []
-
             for dt in range(self.H):
                 t = t0 + dt
                 if t < N:
-                    aL = self._hand_action24(f, t, "left")  - base_L
-                    aR = self._hand_action24(f, t, "right") - base_R
-                    actions_lr.append(aL.astype(np.float32))
-                    actions_lr.append(aR.astype(np.float32))
-                    valid_mask.extend([1, 1])
-                else:
-                    # zero-pad beyond trajectory
-                    actions_lr.append(np.zeros(24, np.float32))
-                    actions_lr.append(np.zeros(24, np.float32))
-                    valid_mask.extend([0, 0])
+                    Lp_t, Lr_t = self._pose_cam_pos6_offset(f, "leftHand",  t)
+                    Rp_t, Rr_t = self._pose_cam_pos6_offset(f, "rightHand", t)
 
-            actions = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*H, 24)
-            state   = self._state_both30(f, t0).astype(np.float32)     # (30,)
+                    dLp = (Lp_t - Lp0).astype(np.float32)
+                    dLr = (Lr_t - Lr0).astype(np.float32)
+                    dRp = (Rp_t - Rp0).astype(np.float32)
+                    dRr = (Rr_t - Rr0).astype(np.float32)
+
+                    qLt = hand_joint_cmd20_from_h5(f, t, "left")
+                    qRt = hand_joint_cmd20_from_h5(f, t, "right")
+
+                    djL = (qLt - qL0).astype(np.float32)
+                    djR = (qRt - qR0).astype(np.float32)
+
+                    actions_lr.extend([
+                        np.concatenate([dLp, dLr, djL], axis=0),
+                        np.concatenate([dRp, dRr, djR], axis=0),
+                    ])
+                else:
+                    actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+
+            actions = np.stack(actions_lr, axis=0).astype(np.float32)
+
+            # --- State (32): L pos3+rot6, R pos3+rot6, L joints[1:8], R joints[1:8] ---
+            state = np.concatenate([Lp0, Lr0, Rp0, Rr0, qL0[1:8], qR0[1:8]], axis=0).astype(np.float32)
 
         # task = folder name (parent directory of the file)
         task = os.path.basename(os.path.dirname(h5_path))

@@ -502,7 +502,7 @@ class LeRobotGalaxeaDataConfigThreeImgs(DataConfigFactory):
         # ----------------------------------------------------------------------
         # TODO change transforms.make_bool_mask to the actual action_dim
         # delta_action_mask = _transforms.make_bool_mask(model_config.action_dim)
-        delta_action_mask = _transforms.make_bool_mask(24) 
+        # delta_action_mask = _transforms.make_bool_mask(29) 
         # TODO: removed since all actions are relative from now on by default
         # data_transforms = data_transforms.push(
             # inputs=[_transforms.DeltaActions(delta_action_mask)],
@@ -589,7 +589,7 @@ class EgodexDataConfig(DataConfigFactory):
         # ----------------------------------------------------------------------
         # TODO change transforms.make_bool_mask to the actual action_dim
         # delta_action_mask = _transforms.make_bool_mask(model_config.action_dim)
-        delta_action_mask = _transforms.make_bool_mask(24) 
+        # delta_action_mask = _transforms.make_bool_mask(24) 
         # TODO: removed since actions are defaulted to relative and we'll
         # construct our own absolute actions
         # data_transforms = data_transforms.push(
@@ -941,6 +941,60 @@ _CONFIGS = [
         # Training hyper-parameters – start with the same settings as pi0_libero.
         num_train_steps=120_000, # TODO: change as needed
         batch_size=32, # TODO: change as needed
+        # lr_schedule=_optimizer.CosineDecaySchedule(),
+        # optimizer=_optimizer.AdamW(),
+        # ema_decay=0.99,
+    ),
+
+    TrainConfig(
+        # Give the experiment a unique handle.
+        name="pi05_galaxea_egodex_joints",
+
+        # Full fine-tuning of tshe standard Pi-0 architecture.
+        # model=pi0.Pi0Config(),
+        model=pi0_config.Pi0Config(action_dim=32, pi05=True),
+
+        # Point to your Galaxea LeRobot repo and use the Galaxea-specific transforms.
+        data=EgodexDataConfig(
+            repo_id="egodex_joints",  # ← replace with your repo if different
+            base_config=DataConfig(
+                # Load the language instruction from the `task` field as the prompt.
+                prompt_from_task=True,
+            ),
+        ),
+
+        # TOOD use cleaner design (e.g., use a list of datasets)
+        data2 =LeRobotGalaxeaDataConfigThreeImgs(
+            repo_id="galaxea_joints",  # ← replace with your repo if different
+            base_config=DataConfig(
+                # Load the language instruction from the `task` field as the prompt.
+                prompt_from_task=True,
+            ),
+        ),
+        # Initialize from the Pi-0 base checkpoint (same as pi0_libero).
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            "gs://openpi-assets/checkpoints/pi05_base/params" 
+        ),
+
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=1000, # TODO: change as needed
+            peak_lr=5e-5, # default is 2.5e-5
+            decay_steps=1_000_000, # TODO: change as needed
+            decay_lr=5e-5, # TODO: change as needed
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0), # default 
+        # ema_decay=0.999, # default is 0.99 if unspecified
+
+        # Training hyper-parameters – start with the same settings as pi0_libero.
+        num_train_steps=300_000, # TODO: change as needed
+        batch_size=256, # TODO: change as needed
+        num_workers=12,
+        # save_interval = 500,
+        # keep_period = 300,
+
+        # batch_size=32, # TODO: change as needed
+        # num_workers=0
+        
         # lr_schedule=_optimizer.CosineDecaySchedule(),
         # optimizer=_optimizer.AdamW(),
         # ema_decay=0.99,
