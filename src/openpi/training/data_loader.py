@@ -402,12 +402,12 @@ def create_torch_data_loader(
     # 1) pick target mix; must sum to 1
     # TODO: ensure distribution looks good
     target_p = {
-        "egodex": 0.00,
-        "ds1":     0.125,
-        "ds2":     0.125,
-        "ds3":     0.125,
-        "ds4":     0.125,
-        "ds5":     0.50,
+        "egodex": 0.75,
+        "ds1":     0.05,
+        "ds2":     0.05,
+        "ds3":     0.05,
+        "ds4":     0.05,
+        "ds5":     0.05,
     }
 
     lengths = [len(egodex_dataset), len(ds1), len(ds2), len(ds3), len(ds4), len(ds5)]
@@ -475,6 +475,7 @@ def create_torch_data_loader(
         framework=framework,
     )
 
+    # this code converts your image 0 - 255 into float -1 to 1
     return DataLoaderImpl(data_config, data_loader)
 
 

@@ -92,7 +92,7 @@ class GalaxeaInputs(transforms.DataTransformFn):
 
         # Include prompt (language instruction) if present.
         if "prompt" in data:
-            print("printing prompt:", data["prompt"])
+            # print("printing prompt:", data["prompt"])
             inputs["prompt"] = data["prompt"]
 
         return inputs

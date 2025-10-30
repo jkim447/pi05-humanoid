@@ -5,6 +5,7 @@ uv run scripts/compute_norm_stats_egodex.py --config-name pi05_galaxea_egodex_wr
 
 uv run scripts/compute_norm_stats_egodex.py --config-name pi05_galaxea_egodex_joints
 
+uv run scripts/compute_norm_stats_egodex.py --config-name pi05_galaxea_egodex_abs_joints
 
 This script is used to compute the normalization statistics for a given config. It
 will compute the mean and standard deviation of the data in the dataset and save it

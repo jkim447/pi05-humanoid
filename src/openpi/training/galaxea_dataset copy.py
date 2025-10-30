@@ -191,8 +191,8 @@ def _link_to_mano(name: str) -> str | None:
 
 # TODO: add keypoint offsets as needed (also fix visualization)
 # --- OPTIONAL: per-hand visualization offsets (hand frame, meters) ---
-VIS_OFFSET_L = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # offset now in T_EE_TO_HAND_L
-VIS_OFFSET_R = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # offset now in T_EE_TO_HAND_R
+VIS_OFFSET_L = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # tweak me
+VIS_OFFSET_R = np.array([0.00, 0.00, 0.00], dtype=np.float64)  # tweak me
 
 def _apply_vis_offset(T_hand: np.ndarray, offset_xyz: np.ndarray) -> np.ndarray:
     """Translate the whole hand by 'offset_xyz' given in the hand frame."""
@@ -283,31 +283,8 @@ _R_z = np.array([[np.cos(_theta_z),-np.sin(_theta_z),0],
 _R_right_z = np.array([[np.cos(_right_theta_z),-np.sin(_right_theta_z),0],
                        [np.sin(_right_theta_z), np.cos(_right_theta_z),0],
                        [0,0,1]])
-
-# Add rotation offset to left hand (from FK_REF.py)
-_angle_5 = np.deg2rad(-5)
-_c5, _s5 = np.cos(_angle_5), np.sin(_angle_5)
-_angle_10 = np.deg2rad(-10)
-_c10, _s10 = np.cos(_angle_10), np.sin(_angle_10)
-_R_x_offset = np.array([[1, 0,  0],
-                        [0, _c5, -_s5],
-                        [0, _s5,  _c5]])
-_R_y_offset = np.array([[ _c10, 0, _s10],
-                        [ 0, 1, 0],
-                        [-_s10, 0, _c10]])
-_T_ee_to_real_ee = np.eye(4)
-_T_ee_to_real_ee[:3, :3] = _R_x_offset @ _R_y_offset
-
-# Build left hand transform with rotation offset
-_T_real_ee_to_hand_left = np.eye(4)
-_T_real_ee_to_hand_left[:3,:3] = _R_y @ _R_z
-_T_real_ee_to_hand_left[:3,3] = [-0.02, -0.06, 0.00]
-T_EE_TO_HAND_L = _T_ee_to_real_ee @ _T_real_ee_to_hand_left  # with rotation offset
-
-# Right hand transform (no rotation offset)
-T_EE_TO_HAND_R = np.eye(4)
-T_EE_TO_HAND_R[:3,:3] = _R_y @ _R_z @ _R_right_z
-T_EE_TO_HAND_R[:3,3] = [0.0, 0.0, 0.04]
+T_EE_TO_HAND_L = np.eye(4); T_EE_TO_HAND_L[:3,:3] = _R_y @ _R_z;       T_EE_TO_HAND_L[:3,3] = [ 0.00,-0.033, 0.00]
+T_EE_TO_HAND_R = np.eye(4); T_EE_TO_HAND_R[:3,:3] = _R_y @ _R_z @ _R_right_z; T_EE_TO_HAND_R[:3,3] = [-0.02, 0.02, 0.025]
 
 # Simple link groups to draw (right hand); prefixes in URDF are "rl_*"
 _HAND_LINK_GROUPS = {
@@ -659,15 +636,6 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             xyz = T_world[:3, 3]
             if np.all(np.isfinite(xyz)):
                 pts[link_name] = xyz
-
-        # Add FK_base as wrist point for visualization (prefix it to distinguish left/right)
-        if "FK_base" in fk:
-            T_link_in_hand = T_fkbase_inv @ fk["FK_base"]
-            T_world = T_hand @ T_link_in_hand
-            xyz = T_world[:3, 3]
-            if np.all(np.isfinite(xyz)):
-                pts[f"{prefix}FK_base"] = xyz  # e.g., "ll_FK_base" or "rl_FK_base"
-
         return pts
 
     # NEW: side-aware camera transform for wrist pose + 6D ori
@@ -782,9 +750,9 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
         # handle left/right
         if pts_map_left is not None:
-            _process_hand("ll", "ll_FK_base", FINGERS_ROBOT_L, pts_map_left)
+            _process_hand("ll", WRIST_L, FINGERS_ROBOT_L, pts_map_left)
         if pts_map_right is not None:
-            _process_hand("rl", "rl_FK_base", FINGERS_ROBOT_R, pts_map_right)
+            _process_hand("rl", WRIST_R, FINGERS_ROBOT_R, pts_map_right)
 
         # draw with your occlusion-aware routine
         z = np.array(z, dtype=np.float32)

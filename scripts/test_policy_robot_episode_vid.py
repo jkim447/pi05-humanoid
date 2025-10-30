@@ -22,7 +22,7 @@ from openpi_client import image_tools
 
 # ─────────────—— file locations & basic constants —──────────────
 stride = 3
-demo = 77
+demo = 3
 IMG_SIZE = 224
 PROMPT   = "vertical_pick_place"
 
@@ -135,8 +135,8 @@ def _in_bounds(p, w, h):
     return (p[:, 0] >= 0) & (p[:, 0] < w) & (p[:, 1] >= 0) & (p[:, 1] < h)
 
 # ──────────────────── load policy & warm up ─────────────────────
-conf      = cfg.get_config("pi05_galaxea_egodex_joints")
-ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_joints/galaxea_egodex_joints/25000")
+conf      = cfg.get_config("pi05_galaxea_egodex_abs_joints")
+ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_abs_joints/galaxea_egodex_abs_joints/3000")
 policy    = policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ───────────────────────── episode loop ─────────────────────────

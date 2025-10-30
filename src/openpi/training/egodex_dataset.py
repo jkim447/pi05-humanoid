@@ -88,7 +88,7 @@ def draw_skeleton_occlusion_aware(
             prims.append(("pt", float(z[i]), (u,v), color_of.get(names[i], (210,210,210))))
     # Sort & draw (far → near)
     prims.sort(key=lambda x: -x[1])
-    img_bgr = cv2.cvtColor((image_rgb_float*255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+    img_bgr = cv2.cvtColor((image_rgb_float).astype(np.uint8), cv2.COLOR_RGB2BGR)
     for prim in prims:
         if prim[0] == "edge":
             _, _, p0, p1, col = prim
@@ -96,7 +96,7 @@ def draw_skeleton_occlusion_aware(
         else:
             _, _, (u,v), col = prim
             cv2.circle(img_bgr, (u,v), pt_radius, col, -1, lineType=cv2.LINE_AA)
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)
     return img_rgb
 
 
@@ -545,7 +545,7 @@ class EgoDexSeqDataset(Dataset):
             return np.zeros((1080, 1920, 3), dtype=np.float32)
 
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        return rgb.astype(np.float32) / 255.0     # return native resolution, no resizing
+        return rgb.astype(np.float32)     # return native resolution, no resizing
 
 
     def _pose_cam_pos6(self, f, name: str, t: int) -> tuple[np.ndarray, np.ndarray]:
@@ -639,19 +639,20 @@ class EgoDexSeqDataset(Dataset):
         return np.concatenate([Lp, Lr, Rp, Rr, L_thumb, L_index, R_thumb, R_index], dtype=np.float32)
 
     # ---------- define offset helpers once near top ----------
-    def _pose_cam_pos6_offset(self, f, name: str, t: int):
+    # replace the old signature/body
+    def _pose_cam_pos6_offset(self, f, name: str, t: int, cam_t: Optional[int] = None):
         """
-        Same as _pose_cam_pos6 but applies wrist orientation offsets
-        so EgoDex matches robot convention.
+        Same as _pose_cam_pos6 but applies wrist orientation offsets.
+        The camera frame is taken at cam_t (defaults to t if None).
         """
-        T_world_cam = f["transforms"]["camera"][t]
+        cam_idx = t if cam_t is None else cam_t
+        T_world_cam = f["transforms"]["camera"][cam_idx]
         T_world_obj = f["transforms"][name][t]
         T_cam = _pose_world_to_cam(T_world_obj, T_world_cam)
 
         pos = T_cam[:3, 3].astype(np.float32)
         Rm  = T_cam[:3, :3]
 
-        # apply orientation offset only for wrists
         if name == "leftHand":
             Rm = Rm @ RC_LEFT_OFFSET
         elif name == "rightHand":
@@ -659,6 +660,25 @@ class EgoDexSeqDataset(Dataset):
 
         rot6 = np.array([Rm[0,0], Rm[1,0], Rm[2,0], Rm[0,1], Rm[1,1], Rm[2,1]], np.float32)
         return pos, rot6
+
+    def center_crop(self, img: np.ndarray, s: float = 0.68, dx: int = 0, dy: int = 0) -> np.ndarray:
+        """Keep s fraction of width/height. Optional (dx,dy) shifts the crop window."""
+        H, W = img.shape[:2]
+        new_W, new_H = int(W * s), int(H * s)
+        x1 = (W - new_W) // 2 + dx
+        y1 = (H - new_H) // 2 + dy
+        x1 = max(0, min(x1, W - new_W))
+        y1 = max(0, min(y1, H - new_H))
+        return img[y1:y1+new_H, x1:x1+new_W]
+
+    def bottom_crop(self, img: np.ndarray, s: float = 0.80) -> np.ndarray:
+        """Keep s fraction of width/height, centered horizontally, anchored to bottom."""
+        H, W = img.shape[:2]
+        new_W, new_H = int(W * s), int(H * s)
+        x1 = (W - new_W) // 2
+        y1 = max(0, H - new_H)   # start so we keep the bottom part
+        return img[y1:y1+new_H, x1:x1+new_W]
+
 
     # ---- main fetch ----
     def __getitem__(self, idx: int) -> Dict[str, Any]:
@@ -743,24 +763,29 @@ class EgoDexSeqDataset(Dataset):
                     z=z,
                     edges_by_name=edges_by_name,
                     color_of=color_of,
-                    pt_radius=11,
-                    line_thickness=8,
+                    pt_radius=12,
+                    line_thickness=25,
                     edge_segments=12,
                 )
+
+                # center crop to match zed mini image view
+                CROP_S = 0.80  # ≈ 82°×52° target -- we need to crop by 68 percent to match zed mini, but misses many objects
+                image = self.bottom_crop(image, s=CROP_S)  # center crop (use dx,dy if you want off-center)
                                                 
             # --- Actions & State (robot-style) ---
-            Lp0, Lr0 = self._pose_cam_pos6_offset(f, "leftHand",  t0)
-            Rp0, Rr0 = self._pose_cam_pos6_offset(f, "rightHand", t0)
+            Lp0, Lr0 = self._pose_cam_pos6_offset(f, "leftHand",  t0, cam_t=t0)
+            Rp0, Rr0 = self._pose_cam_pos6_offset(f, "rightHand", t0, cam_t=t0)
 
             qL0 = hand_joint_cmd20_from_h5(f, t0, "left")
             qR0 = hand_joint_cmd20_from_h5(f, t0, "right")
 
+            # actions relative to the same reference camera frame
             actions_lr = []
             for dt in range(self.H):
                 t = t0 + dt
                 if t < N:
-                    Lp_t, Lr_t = self._pose_cam_pos6_offset(f, "leftHand",  t)
-                    Rp_t, Rr_t = self._pose_cam_pos6_offset(f, "rightHand", t)
+                    Lp_t, Lr_t = self._pose_cam_pos6_offset(f, "leftHand",  t, cam_t=t0)
+                    Rp_t, Rr_t = self._pose_cam_pos6_offset(f, "rightHand", t, cam_t=t0)
 
                     dLp = (Lp_t - Lp0).astype(np.float32)
                     dLr = (Lr_t - Lr0).astype(np.float32)
@@ -770,12 +795,15 @@ class EgoDexSeqDataset(Dataset):
                     qLt = hand_joint_cmd20_from_h5(f, t, "left")
                     qRt = hand_joint_cmd20_from_h5(f, t, "right")
 
-                    djL = (qLt - qL0).astype(np.float32)
-                    djR = (qRt - qR0).astype(np.float32)
+                    # djL = (qLt - qL0).astype(np.float32)
+                    # djR = (qRt - qR0).astype(np.float32)
+
+                    qLt = (qLt).astype(np.float32)
+                    qRt = (qRt).astype(np.float32)
 
                     actions_lr.extend([
-                        np.concatenate([dLp, dLr, djL], axis=0),
-                        np.concatenate([dRp, dRr, djR], axis=0),
+                        np.concatenate([dLp, dLr, qLt], axis=0),
+                        np.concatenate([dRp, dRr, qRt], axis=0),
                     ])
                 else:
                     actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
@@ -794,7 +822,7 @@ class EgoDexSeqDataset(Dataset):
         image = cv2.resize(image, (out_w, out_h), interpolation=cv2.INTER_AREA).astype(np.float32)
 
         return {
-            "image":   image,          # uint8, (H,W,3)
+            "image":   image.astype(np.uint8),          # uint8, (H,W,3)
             "state":   state.astype(np.float32),      # (D,)
             "actions": actions.astype(np.float32),    # (H,D)
             "task":    task,
@@ -832,12 +860,12 @@ class EgoDexSeqDataset(Dataset):
 # print(f"Dataset length: {len(ds)} samples")
 
 # # === test retrieval ===
-# num_samples_to_test = 10
+# num_samples_to_test = 40
 # indices = random.sample(range(len(ds)), num_samples_to_test)
 
 # for idx in indices:
 #     sample = ds[idx]
-#     image = sample["image"]
+#     image = sample["image"]        # already uint8 RGB
 #     state = sample["state"]
 #     actions = sample["actions"]
 #     task = sample["task"]
@@ -848,11 +876,8 @@ class EgoDexSeqDataset(Dataset):
 #     print(f"  Actions shape: {actions.shape}")
 #     print(f"  Task:          {task}")
 
-#     # save image as RGB
+#     # Convert RGB → BGR for OpenCV saving
 #     img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-#     img_bgr_u8 = np.clip(img_bgr * 255.0, 0, 255).astype(np.uint8)
 #     save_path = save_dir / f"sample_{idx}_{task}.png"
-#     cv2.imwrite(str(save_path), img_bgr_u8)
+#     cv2.imwrite(str(save_path), img_bgr)
 #     print(f"  Saved image to {save_path}")
-
-# print(f"\nDone! Check images in {save_dir.resolve()}")
