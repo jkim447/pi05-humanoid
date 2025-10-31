@@ -340,14 +340,14 @@ class EgoDexSeqDataset(Dataset):
 
             # ---- pick a fixed number of episodes per task ----
             # TODO: when computing norm stats, might want to reduce to 25 or something 
-            episodes_per_task = 100
+            episodes_per_task = 0
             rng = random.Random(42)
 
             # tasks you want to fully include
             # TODO: include whatever task that is MOST important
             # TODO: when computing norm stats, comment out include all. When training though, activate it as needed
-            include_all = {"vertical_pick_place", "stack"}  # <== edit this list
-            # include_all = {"vertical_pick_place"}  # <== edit this list
+            # include_all = {"vertical_pick_place", "stack"}  # <== edit this list
+            include_all = {"vertical_pick_place"}  # <== edit this list
             # include_all = {}
 
             def _task_name(ep: Episode) -> str:

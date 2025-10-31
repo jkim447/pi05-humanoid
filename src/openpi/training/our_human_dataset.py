@@ -10,6 +10,7 @@ import pandas as pd
 from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
 from openpi.training.hand_keypoints_config import JOINT_COLOR_BGR, LEFT_FINGERS, RIGHT_FINGERS
+import random
 
 # MANO right-hand semantic names by index (0..20)
 MANO_RIGHT_NAMES = [
@@ -27,12 +28,19 @@ K_LEFT = np.array([[730.2571411132812, 0.0, 637.2598876953125],
                    [0.0, 0.0, 1.0]], dtype=np.float64)
 
 # --------- Extrinsics: cam->base given, we invert to base->cam ---------
+# T_BASE_TO_CAM_LEFT = np.linalg.inv(np.array([
+#     [ 0.00692993, -0.87310148,  0.48748926,  0.14062141],
+#     [-0.99995006, -0.00956093, -0.00290894,  0.03612369],
+#     [ 0.00720065, -0.48744476, -0.87312414,  0.46063114],
+#     [ 0., 0., 0., 1. ]
+# ], dtype=np.float64))
+
 T_BASE_TO_CAM_LEFT = np.linalg.inv(np.array([
-    [ 0.00692993, -0.87310148,  0.48748926,  0.14062141],
-    [-0.99995006, -0.00956093, -0.00290894,  0.03612369],
-    [ 0.00720065, -0.48744476, -0.87312414,  0.46063114],
-    [ 0., 0., 0., 1. ]
-], dtype=np.float64))
+    [0.01988061, -0.43758429,  0.89895759,  0.14056752],
+    [-0.9996933,   0.00457983,  0.02433772,  0.02539622],
+    [-0.01476688, -0.89916573, -0.43735903,  0.43713101],
+    [0.0, 0.0, 0.0, 1.0]
+]))
 R_B2C = T_BASE_TO_CAM_LEFT[:3, :3]
 
 def draw_skeleton_occlusion_aware(
@@ -109,7 +117,8 @@ class HumanDatasetKeypointsJoints(Dataset):
     """
     def __init__(self, dataset_dir: str, chunk_size: int, stride: int = 2,
                  img_height: int = 224, img_width: int = 224, overlay: bool = False,
-                 custom_instruction: str = None):
+                 custom_instruction: str = None,
+                 calib_h: int = 720, calib_w: int = 1280):
         super().__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size  = chunk_size
@@ -118,6 +127,8 @@ class HumanDatasetKeypointsJoints(Dataset):
         self.img_w       = img_width
         self.overlay     = overlay
         self.custom_instruction = custom_instruction
+        self.calib_h     = calib_h
+        self.calib_w     = calib_w
 
         # Column names expected in robot_commands.csv (same as your original)
         self.wrist_xyz  = ["right_wrist_x","right_wrist_y","right_wrist_z"]
@@ -153,6 +164,11 @@ class HumanDatasetKeypointsJoints(Dataset):
             key=lambda p: _demo_key(os.path.basename(p))
         )
 
+        # TODO: comment me out when training!
+        # num_episodes_to_keep = 15
+        # if len(episode_dirs) > num_episodes_to_keep:
+            # episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
+
         # Precompute valid episodes and lengths by reading robot_commands.csv
         self.episodes = []  # list of (demo_dir, length)
         for demo_dir in episode_dirs:
@@ -172,11 +188,18 @@ class HumanDatasetKeypointsJoints(Dataset):
         # Build flat index of (ep_id, t0) requiring a full chunk window
         horizon = self.chunk_size * self.stride
         self.index = []
+        # for ep_id, (_, N) in enumerate(self.episodes):
+        #     last_start = N - horizon
+        #     if last_start < 0:
+        #         continue
+        #     for t0 in range(0, last_start + 1, self.stride): # TODO: why the +1?
+        #         self.index.append((ep_id, t0))
+
         for ep_id, (_, N) in enumerate(self.episodes):
-            last_start = N - horizon
-            if last_start < 0:
+            if N <= 0:
                 continue
-            for t0 in range(0, last_start + 1, self.stride): # TODO: why the +1?
+            # t0 = 0, stride, 2*stride, ..., up to N-1
+            for t0 in range(0, N, self.stride):
                 self.index.append((ep_id, t0))
 
     def __len__(self):
@@ -192,6 +215,22 @@ class HumanDatasetKeypointsJoints(Dataset):
 
     def _rot_base_to_cam(self, R_base):
         return (R_B2C @ R_base).astype(np.float32)
+
+    def _scaled_K_for_image(self, out_w: int, out_h: int) -> np.ndarray:
+        sx = float(out_w) / float(self.calib_w)
+        sy = float(out_h) / float(self.calib_h)
+        K = K_LEFT.copy()
+        K[0,0] *= sx; K[0,2] *= sx
+        K[1,1] *= sy; K[1,2] *= sy
+        return K
+
+
+    @staticmethod
+    def _project(K: np.ndarray, xyz_cam) -> tuple[int,int]:
+        x, y, z = float(xyz_cam[0]), float(xyz_cam[1]), max(float(xyz_cam[2]), 1e-6)
+        u = K[0,0] * (x / z) + K[0,2]
+        v = K[1,1] * (y / z) + K[1,2]
+        return int(round(u)), int(round(v))
 
     @staticmethod
     def _project_scaled(K_raw, xyz_cam, in_h, in_w, out_h, out_w):
@@ -215,14 +254,6 @@ class HumanDatasetKeypointsJoints(Dataset):
         im = cv2.imread(path)
         return im
 
-    @staticmethod
-    def _to_rgb_float_and_resize(bgr_img: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
-        rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
-        # TODO: uncomment me!
-        rgb = cv2.resize(rgb, (out_w, out_h))
-        return (rgb.astype(np.float32) / 255.0)
-
-
     def _row_keypoints_cam(self, row) -> np.ndarray:
         """
         Return all 21 MANO keypoints transformed to the *camera* frame.
@@ -238,40 +269,28 @@ class HumanDatasetKeypointsJoints(Dataset):
 
     def _draw_hand_skeleton(self, img_bgr: np.ndarray, kps_cam: np.ndarray,
                         raw_h: int, raw_w: int, out_h: int, out_w: int) -> np.ndarray:
-        """
-        Occlusion-aware drawing of MANO right-hand keypoints.
-        Draws edges + joints in one global depth-sorted pass.
-        """
-        # 1) Project 3D → 2D (onto resized frame)
+        # We draw on the raw image (raw_h, raw_w), so scale K to that size once.
+        K_img = self._scaled_K_for_image(raw_w, raw_h)
+
         names = MANO_RIGHT_NAMES
         uv, z = [], []
         for (x, y, zc) in kps_cam:
-            u, v = self._project_scaled(K_LEFT, (x, y, zc), raw_h, raw_w, out_h, out_w)
+            u, v = self._project(K_img, (x, y, zc))
             uv.append((u, v))
             z.append(zc)
         z = np.array(z, dtype=np.float32)
 
-        # 2) Build edges by name (using MANO index mapping)
         edges_by_name = [(names[i], names[j]) for (i, j) in self.mano_edges if i < len(names) and j < len(names)]
-
-        # 3) Assign per-joint colors
         fallback = (210, 210, 210)
         color_of = {n: JOINT_COLOR_BGR.get(n, fallback) for n in names}
 
-        # 4) Run global occlusion-aware draw
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
         img_rgb = draw_skeleton_occlusion_aware(
-            img_rgb,
-            names=names,
-            uv=uv,
-            z=z,
-            edges_by_name=edges_by_name,
-            color_of=color_of,
-            pt_radius=6,
-            line_thickness=3,
-            edge_segments=12,
+            img_rgb, names=names, uv=uv, z=z,
+            edges_by_name=edges_by_name, color_of=color_of,
+            pt_radius=5, line_thickness=10, edge_segments=12,
         )
-        return cv2.cvtColor((img_rgb*255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+        return cv2.cvtColor((img_rgb*255).astype(np.uint8), cv2.COLOR_RGB2BGR) # BGR
 
 
     def _row_to_action(self, row):
@@ -298,7 +317,7 @@ class HumanDatasetKeypointsJoints(Dataset):
 
         # final 44D action
         # return np.concatenate([p_cam, ori6d, joints, tips_cam], axis=0).astype(np.float32)
-        return np.concatenate([p_cam, ori6d, tips_cam], axis=0).astype(np.float32) # TODO: add joints back in later when you get it
+        return np.concatenate([p_cam, ori6d, tips_cam], axis=0).astype(np.float32) #: add joints back in later when you get it
 
 
     def _load_left_image(self, demo_dir, t):
@@ -309,58 +328,97 @@ class HumanDatasetKeypointsJoints(Dataset):
         h0, w0 = bgr.shape[:2]
         return bgr, (h0, w0)   # return RAW BGR, no resize, keep original size
 
+    def _row_wrist_cam_pos6(self, row):
+        # position in camera frame
+        p_cam = self._pos_base_to_cam([row[c] for c in self.wrist_xyz])  # (3,)
+        # orientation 6D in camera frame
+        R_base = R.from_quat([row[c] for c in self.wrist_quat]).as_matrix()
+        R_cam  = self._rot_base_to_cam(R_base)
+        rot6   = R_cam[:, :2].reshape(-1, order="F").astype(np.float32)  # (6,)
+        return p_cam.astype(np.float32), rot6
+
+    def _row_joints20(self, row):
+        return np.asarray([row[c] for c in self.joint_cols], dtype=np.float32)  # (20,)
+
+    @staticmethod
+    def _to_rgb_uint8_and_resize(bgr_img: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
+        rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+        # TODO: MAKE SURE THIS IS UNCOMMENTED!
+        rgb = cv2.resize(rgb, (out_w, out_h), interpolation=cv2.INTER_AREA)
+        return rgb.astype(np.uint8)
+
+
     def __getitem__(self, index):
         ep_id, t0 = self.index[index]
         demo_dir, N = self.episodes[ep_id]
 
-        # load start image and remember original size for projection scaling
+        # image (raw)
         try:
             bgr_raw, (raw_h, raw_w) = self._load_left_image(demo_dir, t0)
         except FileNotFoundError:
             new_index = np.random.randint(0, len(self))
             return self.__getitem__(new_index)
 
-        # load CSV
+        # csv
         csv_path = os.path.join(demo_dir, "robot_commands.csv")
         df = pd.read_csv(csv_path)
 
-        # build action sequence
-        end_t = t0 + self.chunk_size * self.stride
-        end_t = min(t0 + self.chunk_size * self.stride, len(df))
-        seq = [self._row_to_action(df.iloc[t]) for t in range(t0, end_t, self.stride)]
-        actions = np.stack(seq, axis=0).astype(np.float32)  # (chunk, 44)
+        # --- state (32): [L pos3+rot6 zeros(9), R pos3+rot6 abs(9), L joints[1:8] zeros(7), R joints[1:8] abs(7)] ---
+        row0 = df.iloc[t0]
+        R_pos0, R_rot60 = self._row_wrist_cam_pos6(row0)
+        qR0 = self._row_joints20(row0)
 
-        # keep absolute at first step for state
-        # TODO: be careful, since if you have single arm data the first item will be the left arm by default
-        # but if you have dual arm data it will be the right arm.
-        state_abs = actions[0].copy()  # (44,)
+        L_posrot6_zeros = np.zeros(9, np.float32)
+        L_j7_zeros      = np.zeros(7, np.float32)
+        R_j7_abs        = qR0[1:8].astype(np.float32)  # right_hand_1 .. right_hand_7
 
-        # deltas only on translation across the window (first 3 components)
-        # actions[:, 0:3] -= actions[0, 0:3]
+        state = np.concatenate([L_posrot6_zeros, R_pos0, R_rot60, L_j7_zeros, R_j7_abs], dtype=np.float32)
 
-        # interleave zero (left hand placeholder) and right-hand token
-        zeros = np.zeros((actions.shape[0], actions.shape[1]), dtype=np.float32)
-        actions_out = np.empty((actions.shape[0] * 2, actions.shape[1]), dtype=np.float32)
-        actions_out[0::2] = zeros
-        actions_out[1::2] = actions
+        # --- actions (2*chunk, 29): interleaved [zeros(29), right(Δpos3, Δrot6, Δjoints20)] ---
+        # reference at t0
+        ref_pos, ref_rot6, ref_qR = R_pos0, R_rot60, qR0
 
+        actions_lr = []
+        for dt in range(self.chunk_size):
+            t = t0 + dt * self.stride
+            if t < N:
+                row_t = df.iloc[t]
+                pos_t, rot6_t = self._row_wrist_cam_pos6(row_t)
+                qR_t = self._row_joints20(row_t)
+
+                dpos  = (pos_t  - ref_pos).astype(np.float32)   # (3,)
+                drot6 = (rot6_t - ref_rot6).astype(np.float32)  # (6,)
+                dqR   = (qR_t   - ref_qR).astype(np.float32)    # (20,)
+
+                right = np.concatenate([dpos, drot6, dqR], axis=0).astype(np.float32)  # (29,)
+                actions_lr.extend([np.zeros(29, np.float32), right])
+            else:
+                # out of range → pad both tokens with zeros (explicit and easy to read)
+                actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+
+        actions_out = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*chunk, 29)
+
+        # --- visualization (optional) & final image as uint8 ---
         if self.overlay:
             vis_raw = bgr_raw.copy()
-            kps_cam = self._row_keypoints_cam(df.iloc[t0])
-            vis_raw = self._draw_hand_skeleton(vis_raw, kps_cam, raw_h, raw_w, raw_h, raw_w)
-            img = self._to_rgb_float_and_resize(vis_raw, self.img_w, self.img_h)
+            kps_cam = self._row_keypoints_cam(df.iloc[t0])  # (21,3) in cam
+            vis_raw = self._draw_hand_skeleton(vis_raw, kps_cam, raw_h, raw_w, raw_h, raw_w) # BGR
+            img = self._to_rgb_uint8_and_resize(vis_raw, self.img_w, self.img_h)
         else:
-            img = self._to_rgb_float_and_resize(bgr_raw, self.img_w, self.img_h)
+            img = self._to_rgb_uint8_and_resize(bgr_raw, self.img_w, self.img_h)
 
 
+        H, W, C = img.shape
+        zeros_img = np.zeros_like(img, dtype=np.uint8)
 
         return {
-            "image":   img.astype(np.float32),      # (H, W, 3) in [0,1]
-            "state":   state_abs.astype(np.float32),# (44,) absolute
-            "actions": actions_out.astype(np.float32),  # (2*chunk, 44) with translation deltas
-            "task": self.custom_instruction if self.custom_instruction is not None else "place red cube into box",
-
-        }
+            "image":   img.astype(np.uint8),      # (H,W,3) uint8 RGB
+            "wrist_image_left":  zeros_img,                    # dummy
+            "wrist_image_right": zeros_img,                    # dummy
+            "state":   state.astype(np.float32),  # (32,)
+            "actions": actions_out.astype(np.float32),  # (2*chunk, 29)
+            "task":    self.custom_instruction if self.custom_instruction is not None else "vertical_pick_place",
+    }
 
 
 # # test_human_dataset_simple.py
@@ -386,18 +444,20 @@ class HumanDatasetKeypointsJoints(Dataset):
 #         img = rgb_tensor_or_array.detach().cpu().numpy()
 #     else:
 #         img = rgb_tensor_or_array
-#     img = (img.clip(0, 1) * 255.0).astype("uint8")
+#     # img = (img.clip(0, 1) * 255.0).astype("uint8")
 #     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 #     cv2.imwrite(out_path, bgr)
 
 # def main():
 #     ds = HumanDatasetKeypointsJoints(
-#         dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
+#         # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
+#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_EXTRA_RIGHT_REGION",
 #         chunk_size=20,
 #         stride=2,
 #         img_height=224,
 #         img_width=224,
 #         overlay=True,   # draws wrist + 5 tips on the resized left image
+#         custom_instruction="vertical_pick_place",
 #     )
 
 #     loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)

@@ -40,8 +40,8 @@ def create_torch_dataloader(
         raise ValueError("Data config must have a repo_id")
     # dataset = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
     # TODO: revise this accordingly to your dataset signature
-    _, ds1, ds2, ds3, ds4, ds5 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
-    dataset = ConcatDataset([ds1, ds2, ds3, ds4, ds5])
+    _, ds1, ds2, ds3, ds4, ds5, ds6 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    dataset = ConcatDataset([ds1, ds2, ds3, ds4, ds5, ds6])
 
     dataset = _data_loader.TransformedDataset(
         dataset,

@@ -298,28 +298,16 @@ _R_y_offset = np.array([[ _c10, 0, _s10],
 _T_ee_to_real_ee = np.eye(4)
 _T_ee_to_real_ee[:3, :3] = _R_x_offset @ _R_y_offset
 
-# # Build left hand transform with rotation offset
-# _T_real_ee_to_hand_left = np.eye(4)
-# _T_real_ee_to_hand_left[:3,:3] = _R_y @ _R_z
-# _T_real_ee_to_hand_left[:3,3] = [-0.02, -0.06, 0.00]
-# T_EE_TO_HAND_L = _T_ee_to_real_ee @ _T_real_ee_to_hand_left  # with rotation offset
-
-# # Right hand transform (no rotation offset)
-# T_EE_TO_HAND_R = np.eye(4)
-# T_EE_TO_HAND_R[:3,:3] = _R_y @ _R_z @ _R_right_z
-# T_EE_TO_HAND_R[:3,3] = [0.0, 0.0, 0.04]
-
-
 # Build left hand transform with rotation offset
 _T_real_ee_to_hand_left = np.eye(4)
 _T_real_ee_to_hand_left[:3,:3] = _R_y @ _R_z
-_T_real_ee_to_hand_left[:3,3] = [-0.0, -0.0, 0.00]
+_T_real_ee_to_hand_left[:3,3] = [-0.02, -0.06, 0.00]
 T_EE_TO_HAND_L = _T_ee_to_real_ee @ _T_real_ee_to_hand_left  # with rotation offset
 
 # Right hand transform (no rotation offset)
 T_EE_TO_HAND_R = np.eye(4)
 T_EE_TO_HAND_R[:3,:3] = _R_y @ _R_z @ _R_right_z
-T_EE_TO_HAND_R[:3,3] = [-0.01, -0.005, 0.015]
+T_EE_TO_HAND_R[:3,3] = [0.0, 0.0, 0.04]
 
 # Simple link groups to draw (right hand); prefixes in URDF are "rl_*"
 _HAND_LINK_GROUPS = {
@@ -393,8 +381,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
     def __init__(self, task: str, dataset_dir, chunk_size, stride=3, overlay=False,
                 #  hand_mode: str = "right",  # "left", "right", or "both"
                  urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
-                 urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
-                 mask_wrist: bool = False):
+                 urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf"):
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
@@ -402,7 +389,6 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         self.img_width  = 224
         self.stride = stride
         self.overlay = overlay
-        self.mask_wrist = mask_wrist
         if not isinstance(task, str) or task.strip() == "":
             raise ValueError("`task` must be a non-empty string.")
         self.task = task
@@ -456,7 +442,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         )
 
         # TODO: delete me
-        # self.episode_dirs = random.sample(self.episode_dirs, 15)
+        # self.episode_dirs = random.sample(self.episode_dirs, 25)
         # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
         # Precompute (episode_len) for each episode by reading its CSV once
@@ -828,7 +814,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
     def _resize_norm_rgb(self, img_bgr):
         rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         # TODO: undo me!
-        rgb = cv2.resize(rgb, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
+        # rgb = cv2.resize(rgb, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
         # return (rgb.astype(np.float32) / 255.0)
         return rgb
 
@@ -940,12 +926,6 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         cmd7R = _cmd7(row0, "right")
 
         state = np.concatenate([pL0, oL0, pR0, oR0, cmd7L, cmd7R], axis=0).astype(np.float32)  # (32,)
-
-        # TODO: note that we're adding the option to mask wrist images
-        if self.mask_wrist:                          # ← add
-            zero = np.zeros_like(image, dtype=np.uint8)
-            wrist_image_left  = zero
-            wrist_image_right = zero
 
         return {
             "image": image.astype(np.uint8),
@@ -1102,68 +1082,68 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #################################################################
 #################################################################
 
-# import os
-# import numpy as np
-# import cv2
-# from torch.utils.data import DataLoader
+import os
+import numpy as np
+import cv2
+from torch.utils.data import DataLoader
 
-# # ---- import your dataset class first ----
-# # from your_file import GalaxeaDatasetKeypointsJoints
+# ---- import your dataset class first ----
+# from your_file import GalaxeaDatasetKeypointsJoints
 
-# def save_rgb01(path, rgb01):
-#     """rgb01: (H,W,3) float32 in [0,1]"""
-#     bgr_u8 = rgb01.astype(np.uint8)[:, :, ::-1]  # RGB->BGR
-#     cv2.imwrite(path, bgr_u8)
+def save_rgb01(path, rgb01):
+    """rgb01: (H,W,3) float32 in [0,1]"""
+    bgr_u8 = rgb01.astype(np.uint8)[:, :, ::-1]  # RGB->BGR
+    cv2.imwrite(path, bgr_u8)
 
-# if __name__ == "__main__":
-#     # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_INTER_1030"
-#     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
-#     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"
+if __name__ == "__main__":
+    # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
+    dataset_root = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana"
+    # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
+    # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"
 
-#     ds = GalaxeaDatasetKeypointsJoints(
-#         dataset_dir=dataset_root,
-#         chunk_size=8,
-#         stride=3,
-#         overlay=True,   # turn on drawing
-#         task="vertical_pick_place"
-#         # hand_mode="both",  # "left" | "right" | "both"
-#     )
+    ds = GalaxeaDatasetKeypointsJoints(
+        dataset_dir=dataset_root,
+        chunk_size=8,
+        stride=3,
+        overlay=True,   # turn on drawing
+        task="vertical_pick_place"
+        # hand_mode="both",  # "left" | "right" | "both"
+    )
 
-#     dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
+    dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
 
-#     out_dir = "/iris/projects/humanoid/openpi/robot_vis"
-#     os.makedirs(out_dir, exist_ok=True)
+    out_dir = "/iris/projects/humanoid/openpi/robot_vis"
+    os.makedirs(out_dir, exist_ok=True)
 
-#     for i, batch in enumerate(dl):
-#         # tensors -> numpy
-#         img_main = batch["image"][0].numpy()                 # (H,W,3) float32 [0,1]
-#         img_wl   = batch["wrist_image_left"][0].numpy()      # (H,W,3) float32 [0,1]
-#         img_wr   = batch["wrist_image_right"][0].numpy()     # (H,W,3) float32 [0,1]
+    for i, batch in enumerate(dl):
+        # tensors -> numpy
+        img_main = batch["image"][0].numpy()                 # (H,W,3) float32 [0,1]
+        img_wl   = batch["wrist_image_left"][0].numpy()      # (H,W,3) float32 [0,1]
+        img_wr   = batch["wrist_image_right"][0].numpy()     # (H,W,3) float32 [0,1]
 
-#         state   = batch["state"][0].numpy()
-#         actions = batch["actions"][0].numpy()
-#         task    = batch["task"][0]
+        state   = batch["state"][0].numpy()
+        actions = batch["actions"][0].numpy()
+        task    = batch["task"][0]
 
-#         # save individually
-#         save_rgb01(os.path.join(out_dir, f"sample_{i:02d}.png"),           img_main)
-#         # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_left.png"),  img_wl)
-#         # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_right.png"), img_wr)
+        # save individually
+        save_rgb01(os.path.join(out_dir, f"sample_{i:02d}.png"),           img_main)
+        # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_left.png"),  img_wl)
+        # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_right.png"), img_wr)
 
-#         # optional: quick strip for visual parity check
-#         try:
-#             strip = np.concatenate([img_main, img_wl, img_wr], axis=1)  # (H, 3W, 3)
-#             # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_strip.png"), strip)
-#         except Exception as e:
-#             print(f"[warn] could not make strip for sample {i}: {e}")
+        # optional: quick strip for visual parity check
+        try:
+            strip = np.concatenate([img_main, img_wl, img_wr], axis=1)  # (H, 3W, 3)
+            # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_strip.png"), strip)
+        except Exception as e:
+            print(f"[warn] could not make strip for sample {i}: {e}")
 
-#         print(
-#             f"saved sample_{i:02d} main/wrist images  |  "
-#             f"state {state.shape}  actions {actions.shape}  task={task}"
-#         )
+        print(
+            f"saved sample_{i:02d} main/wrist images  |  "
+            f"state {state.shape}  actions {actions.shape}  task={task}"
+        )
 
-#         if i >= 20:
-#             break
+        if i >= 10:
+            break
 
 
 #########################################################################
