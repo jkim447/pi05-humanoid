@@ -165,9 +165,9 @@ class HumanDatasetKeypointsJoints(Dataset):
         )
 
         # TODO: comment me out when training!
-        # num_episodes_to_keep = 15
+        # num_episodes_to_keep = 20
         # if len(episode_dirs) > num_episodes_to_keep:
-            # episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
+        #     episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
 
         # Precompute valid episodes and lengths by reading robot_commands.csv
         self.episodes = []  # list of (demo_dir, length)
@@ -288,7 +288,7 @@ class HumanDatasetKeypointsJoints(Dataset):
         img_rgb = draw_skeleton_occlusion_aware(
             img_rgb, names=names, uv=uv, z=z,
             edges_by_name=edges_by_name, color_of=color_of,
-            pt_radius=5, line_thickness=10, edge_segments=12,
+            pt_radius=4, line_thickness=8, edge_segments=12, # TODO: align this with the robot
         )
         return cv2.cvtColor((img_rgb*255).astype(np.uint8), cv2.COLOR_RGB2BGR) # BGR
 
@@ -343,7 +343,7 @@ class HumanDatasetKeypointsJoints(Dataset):
     @staticmethod
     def _to_rgb_uint8_and_resize(bgr_img: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
         rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
-        # TODO: MAKE SURE THIS IS UNCOMMENTED!
+        # TODO: MAKE SURE THIS IS ACTIVE!
         rgb = cv2.resize(rgb, (out_w, out_h), interpolation=cv2.INTER_AREA)
         return rgb.astype(np.uint8)
 
@@ -421,7 +421,7 @@ class HumanDatasetKeypointsJoints(Dataset):
     }
 
 
-# # test_human_dataset_simple.py
+# test_human_dataset_simple.py
 # import os
 # import cv2
 # import torch
@@ -451,7 +451,7 @@ class HumanDatasetKeypointsJoints(Dataset):
 # def main():
 #     ds = HumanDatasetKeypointsJoints(
 #         # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
-#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_EXTRA_RIGHT_REGION",
+#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1101",
 #         chunk_size=20,
 #         stride=2,
 #         img_height=224,

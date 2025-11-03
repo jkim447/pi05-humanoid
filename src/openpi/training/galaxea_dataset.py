@@ -1,6 +1,6 @@
 """
 usage:
-uv run -active src/openpi/training/galaxea_dataset.py
+uv run src/openpi/training/galaxea_dataset.py
 
 There are two blocks of code at the very bottom, first block is for overlaid keypoint and edge visualization
 the bottom one is for the action visualization project on the image. Uncomment accordingly to your needs.
@@ -456,7 +456,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         )
 
         # TODO: delete me
-        # self.episode_dirs = random.sample(self.episode_dirs, 15)
+        # self.episode_dirs = random.sample(self.episode_dirs, 35)
         # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
         # Precompute (episode_len) for each episode by reading its CSV once
@@ -810,8 +810,8 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             z=z,
             edges_by_name=edges_by_name,
             color_of=color_of,
-            pt_radius=5,
-            line_thickness=10,
+            pt_radius=4,
+            line_thickness=8,
             edge_segments=12,
         )
         return cv2.cvtColor((img_rgb * 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
@@ -827,7 +827,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
     def _resize_norm_rgb(self, img_bgr):
         rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        # TODO: undo me!
+        # TODO: make sure I'm activated during training!
         rgb = cv2.resize(rgb, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
         # return (rgb.astype(np.float32) / 255.0)
         return rgb
@@ -942,10 +942,16 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         state = np.concatenate([pL0, oL0, pR0, oR0, cmd7L, cmd7R], axis=0).astype(np.float32)  # (32,)
 
         # TODO: note that we're adding the option to mask wrist images
-        if self.mask_wrist:                          # ← add
-            zero = np.zeros_like(image, dtype=np.uint8)
-            wrist_image_left  = zero
-            wrist_image_right = zero
+        # if self.mask_wrist:                          # ← add
+        #     zero = np.zeros_like(image, dtype=np.uint8)
+        #     wrist_image_left  = zero
+        #     wrist_image_right = zero
+
+        # TODO: now I'm dropping out wrist cameras!
+        WRIST_DROPOUT = 0.40 
+        if (random.random() < WRIST_DROPOUT):
+            wrist_image_left[...]  = 0
+            wrist_image_right[...] = 0
 
         return {
             "image": image.astype(np.uint8),
@@ -1098,7 +1104,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
 #################################################################
 #################################################################
-# UNCOMMENT ME to visualize the dataset!
+# UNCOMMENT ME to visualize the dataset! # TODO: ensure this portion is commented out during training
 #################################################################
 #################################################################
 
@@ -1117,7 +1123,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
 # if __name__ == "__main__":
 #     # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_INTER_1030"
+#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TR_1101"
 #     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"
 
@@ -1162,7 +1168,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #             f"state {state.shape}  actions {actions.shape}  task={task}"
 #         )
 
-#         if i >= 20:
+#         if i >= 40:
 #             break
 
 

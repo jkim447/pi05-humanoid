@@ -260,7 +260,7 @@ class Episode:
     N: int
 
 def _index_path(root_dir: str) -> str:
-    # TODO: undo my name!
+    # TODO: make sure I'm activated during training!
     return os.path.join(root_dir, "episodes_index.jsonl")
 
 def _save_index(root_dir: str, episodes: list[Episode]) -> None:
@@ -340,6 +340,7 @@ class EgoDexSeqDataset(Dataset):
 
             # ---- pick a fixed number of episodes per task ----
             # TODO: when computing norm stats, might want to reduce to 25 or something 
+            # TODO: note that if this line is active, we're using zero training data in most tasks!
             episodes_per_task = 0
             rng = random.Random(42)
 
@@ -371,13 +372,13 @@ class EgoDexSeqDataset(Dataset):
         if episodes is None:
             print("scanning dataset for (hdf5, mp4) pairs, this may take a while...")
             episodes = []
-            # TODO: uncomment me!
+            # TODO: keep me active for training!
             part_dirs = sorted(
                 d for d in os.listdir(root_dir)
                 if os.path.isdir(os.path.join(root_dir, d)) and (d.startswith("part") or d in ("test","extra"))
             )
 
-            # TODO: comment me out!
+            # TODO: keep it commented, for testing only!
             # part_dirs = ["/iris/projects/humanoid/dataset/ego_dex/part5"]
             # print("found part dirs:", part_dirs)
 
@@ -422,8 +423,6 @@ class EgoDexSeqDataset(Dataset):
 
         index = []
         for ep_id, (_, _, N) in enumerate(self.episodes):
-            # last_start = N - self.H  # TODO: this is not good, need to pad!
-            # index.extend((ep_id, t0) for t0 in range(0, last_start + 1, self.stride))
             last_start = N - 1  # allow starting at the final frame
             index.extend((ep_id, t0) for t0 in range(0, last_start + 1, self.stride))
         self.index: List[Tuple[int, int]] = index
