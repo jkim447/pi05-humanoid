@@ -164,7 +164,7 @@ class HumanDatasetKeypointsJoints(Dataset):
             key=lambda p: _demo_key(os.path.basename(p))
         )
 
-        # TODO: comment me out when training!
+        # TODO: use me only when computing norm stats!
         # num_episodes_to_keep = 20
         # if len(episode_dirs) > num_episodes_to_keep:
         #     episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)

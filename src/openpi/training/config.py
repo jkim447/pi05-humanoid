@@ -989,8 +989,8 @@ _CONFIGS = [
         num_train_steps=300_000, # TODO: change as needed
         batch_size=256, # TODO: change as needed
         num_workers=12,
-        # save_interval = 100,
-        # keep_period = 500,
+        save_interval = 100,
+        keep_period = 500,
 
         # batch_size=32, # TODO: change as needed
         # num_workers=0

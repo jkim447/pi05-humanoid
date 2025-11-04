@@ -206,23 +206,29 @@ def create_torch_dataset(
 
     # TODO: uncomment below!
     from openpi.training.galaxea_dataset import GalaxeaDatasetKeypointsJoints
-    dataset_dir1 = "/iris/projects/humanoid/dataset/ROBOT_SORT_TR_1101"
-    dataset_dir2 = "/iris/projects/humanoid/dataset/ROBOT_SORT_TR_1101"
+    # dataset_dir1 = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1101"
+    # dataset_dir2 = "/iris/projects/humanoid/dataset/ROBOT_SORT_TR_1101"
 
-    dataset_dir_h1 = "/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1101"
-    dataset_dir_h2 = "/iris/projects/humanoid/dataset/HUMAN_SORT_TR_1101"
-    dataset_dir_h3 = "/iris/projects/humanoid/dataset/HUMAN_SORT_IL_1101"
-    dataset_dir_h4 = "/iris/projects/humanoid/dataset/HUMAN_SORT_IR_1101"
+    # dataset_dir_h1 = "/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1101"
+    # dataset_dir_h2 = "/iris/projects/humanoid/dataset/HUMAN_SORT_TR_1101"
+    # dataset_dir_h3 = "/iris/projects/humanoid/dataset/HUMAN_SORT_IL_1101"
+    # dataset_dir_h4 = "/iris/projects/humanoid/dataset/HUMAN_SORT_IR_1101"
 
 
     # use below for pick place + stack stitching exp
-    # dataset_dir1 = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_LEFT" # left box
-    # dataset_dir2 = "/iris/projects/humanoid/dataset/ROBOT_PICK_EXTRA_RIGHT_1031" # right box
-    # dataset_dir3 = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_INTER_1030" # recovery demos
+    dataset_dir1 = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_LEFT" # left box
+    dataset_dir2 = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_RIGHT" # left box
+    dataset_dir3 = "/iris/projects/humanoid/dataset/ROBOT_PICK_EXTRA_RIGHT_1031" # right box
+    dataset_dir4 = "/iris/projects/humanoid/dataset/ROBOT_PICK_PLACE_INTER_1030" # recovery demos
+    dataset_dir5 = "/iris/projects/humanoid/dataset/ROBOT_STACK"
 
-    # dataset_dir_h1 = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_LEFT_REGION"
-    # dataset_dir_h2 = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_RIGHT_REGION"
-    # dataset_dir_h3 = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_EXTRA_RIGHT_REGION"
+    dataset_dir_h1 = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_LEFT_REGION"
+    dataset_dir_h2 = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_RIGHT_REGION"
+    dataset_dir_h3 = "/iris/projects/humanoid/dataset/HUMAN_PICK_PLACE_EXTRA_RIGHT_REGION"
+    dataset_dir_h4 = "/iris/projects/humanoid/dataset/HUMAN_STACK_SINGLE"
+    dataset_dir_h5 = "/iris/projects/humanoid/dataset/HUMAN_LEFT_REGION_COMBINED"
+    dataset_dir_h6 = "/iris/projects/humanoid/dataset/HUMAN_RIGHT_REGION_COMBINED"
+
 
     # use below for general pick and place
     # dataset_dir1 = "/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/banana"
@@ -243,10 +249,20 @@ def create_torch_dataset(
                                 overlay = overlay, # TODO: action horizon // 2 is important if interleaving left and right actions
                                 mask_wrist = mask_wrist) # TODO: note that mask wrist option
 
-    # gd3 = GalaxeaDatasetKeypointsJoints(task = "vertical_pick_place", dataset_dir = dataset_dir3,
-    #                             chunk_size=action_horizon//2, stride = 2, # TODO: change stride as needed
-    #                             overlay = overlay, # TODO: action horizon // 2 is important if interleaving left and right actions
-    #                             mask_wrist = mask_wrist) # TODO: note that mask wrist option
+    gd3 = GalaxeaDatasetKeypointsJoints(task = "vertical_pick_place", dataset_dir = dataset_dir3,
+                                chunk_size=action_horizon//2, stride = 2, # TODO: change stride as needed
+                                overlay = overlay, # TODO: action horizon // 2 is important if interleaving left and right actions
+                                mask_wrist = mask_wrist) # TODO: note that mask wrist option
+
+    gd4 = GalaxeaDatasetKeypointsJoints(task = "vertical_pick_place", dataset_dir = dataset_dir4,
+                            chunk_size=action_horizon//2, stride = 2, # TODO: change stride as needed
+                            overlay = overlay, # TODO: action horizon // 2 is important if interleaving left and right actions
+                            mask_wrist = mask_wrist) # TODO: note that mask wrist option
+
+    gd5 = GalaxeaDatasetKeypointsJoints(task = "stack", dataset_dir = dataset_dir5,
+                            chunk_size=action_horizon//2, stride = 2, # TODO: change stride as needed
+                            overlay = overlay, # TODO: action horizon // 2 is important if interleaving left and right actions
+                            mask_wrist = mask_wrist) # TODO: note that mask wrist option
 
     from openpi.training.our_human_dataset import HumanDatasetKeypointsJoints
     hd1 = HumanDatasetKeypointsJoints(
@@ -290,7 +306,29 @@ def create_torch_dataset(
         img_height=224,
         img_width=224,
         overlay=overlay,   # draws wrist + 5 tips on the resized left image
-        custom_instruction="vertical_pick_place", # TODO: ensure this is correct
+        custom_instruction="stack", # TODO: ensure this is correct
+    )
+
+    hd5 = HumanDatasetKeypointsJoints(
+        # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
+        dataset_dir = dataset_dir_h5,
+        chunk_size=action_horizon//2,
+        stride=1,
+        img_height=224,
+        img_width=224,
+        overlay=overlay,   # draws wrist + 5 tips on the resized left image
+        custom_instruction="vertical_pick_place_stack", # TODO: ensure this is correct
+    )
+
+    hd6 = HumanDatasetKeypointsJoints(
+        # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
+        dataset_dir = dataset_dir_h6,
+        chunk_size=action_horizon//2,
+        stride=1,
+        img_height=224,
+        img_width=224,
+        overlay=overlay,   # draws wrist + 5 tips on the resized left image
+        custom_instruction="vertical_pick_place_stack", # TODO: ensure this is correct
     )
 
     return egodex_dataset, gd1, gd2, hd1, hd2, hd3, hd4
@@ -464,9 +502,9 @@ def create_torch_data_loader(
     # 1) pick target mix; must sum to 1
     # TODO: ensure distribution looks good
     target_p = {
-        "egodex": 0.10,
-        "ds1":     0.15, # robot
-        "ds2":     0.15, # robot
+        "egodex": 0.0, # TODO: set to 0, should probably change
+        "ds1":     0.50, # robot
+        "ds2":     0.50, # robot
         "ds3":     0.15, # human
         "ds4":     0.15, # human
         "ds5":     0.15, # human
@@ -474,11 +512,11 @@ def create_torch_data_loader(
     }
 
     # TODO: restore if training on all datasets
-    lengths = [len(egodex_dataset), len(ds1), len(ds2), len(ds3), len(ds4), len(ds5), len(ds6)]
-    pks     = [target_p["egodex"],   target_p["ds1"],  target_p["ds2"], target_p["ds3"], target_p["ds4"], target_p["ds5"], target_p["ds6"]]
+    # lengths = [len(egodex_dataset), len(ds1), len(ds2), len(ds3), len(ds4), len(ds5), len(ds6)]
+    # pks     = [target_p["egodex"],   target_p["ds1"],  target_p["ds2"], target_p["ds3"], target_p["ds4"], target_p["ds5"], target_p["ds6"]]
     # TODO: remove me if training on full data and restore above
-    # lengths = [len(ds1), len(ds2), len(ds3)]
-    # pks     = [target_p["ds1"],  target_p["ds2"], target_p["ds3"]]
+    lengths = [len(ds1), len(ds2)]
+    pks     = [target_p["ds1"],  target_p["ds2"]]
     
 
     # 2) per-sample weights: w_k ∝ p_k / n_k
@@ -493,8 +531,8 @@ def create_torch_data_loader(
     epoch_samples = sum(lengths)  # or any value you like
 
     # TODO: uncomment if co-training on all datasets
-    dataset = ConcatDataset([egodex_dataset, ds1, ds2, ds3, ds4, ds5, ds6])
-    # dataset = ConcatDataset([ds1, ds2, ds3])
+    # dataset = ConcatDataset([egodex_dataset, ds1, ds2, ds3, ds4, ds5, ds6])
+    dataset = ConcatDataset([ds1, ds2]) # TODO: I'm using two datasets right now, probably need to change
     # TODO: if using a single dataset
     # dataset = galaxea_dataset
     # dataset = ConcatDataset([egodex_dataset, galaxea_dataset])

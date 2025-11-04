@@ -23,6 +23,8 @@ if not hasattr(np, "float"):
 from urdfpy import URDF
 from openpi.training.hand_keypoints_config import JOINT_COLOR_BGR
 import random
+import openpi.shared.normalize as normalize  # you already have this in your repo
+
 
 def scale_K(K, new_W, new_H, orig_W=1280, orig_H=720):
     scale_x = new_W / orig_W
@@ -394,7 +396,9 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
                 #  hand_mode: str = "right",  # "left", "right", or "both"
                  urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
                  urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
-                 mask_wrist: bool = False):
+                 mask_wrist: bool = False,
+                 apply_custom_norm = False, # TODO: we have option to specify custom norm
+                 norm_stats_path: str = None,): # TODO: and the path for the custom norm params
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
@@ -403,6 +407,13 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         self.stride = stride
         self.overlay = overlay
         self.mask_wrist = mask_wrist
+        self.apply_custom_norm = apply_custom_norm
+        self._norm = None  # ← add this line
+        if self.apply_custom_norm and norm_stats_path is not None and os.path.exists(norm_stats_path):
+            self._norm = normalize.load(os.path.dirname(norm_stats_path))
+        
+
+
         if not isinstance(task, str) or task.strip() == "":
             raise ValueError("`task` must be a non-empty string.")
         self.task = task
@@ -455,7 +466,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             key=lambda p: _demo_key(os.path.basename(p)),
         )
 
-        # TODO: delete me
+        # TODO: use me only for computig norm stats!
         # self.episode_dirs = random.sample(self.episode_dirs, 35)
         # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
@@ -859,6 +870,41 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         a = np.concatenate([p_cam.astype(np.float32), ori6d.astype(np.float32), joints20], axis=0)
         return a  # (29,)
 
+    def _apply_norm_stats(self, x: np.ndarray, stats, eps: float = 1e-6) -> np.ndarray:
+        # Mirror Normalize._normalize: mean[..., :D], std[..., :D], same eps
+        D = x.shape[-1]
+        mean = stats.mean[..., :D]
+        std  = stats.std[...,  :D]
+        y = (x - mean) / (std + eps)
+        return y  # keep dtype behavior like original; cast later if you want float32
+
+    def _maybe_norm_state(self, state: np.ndarray) -> np.ndarray:
+        if self._norm is None or "state" not in self._norm:
+            return state
+        return self._apply_norm_stats(state, self._norm["state"])
+
+    def _maybe_norm_actions_per_hand(self, actions: np.ndarray) -> np.ndarray:
+        """
+        actions: (T, D) interleaved [L,R,L,R,...]
+        Prefer per-hand stats; fall back to whole 'actions' stats if unavailable,
+        exactly like your Normalize transform would.
+        """
+        if self._norm is None:
+            return actions
+
+        if "left_actions" in self._norm and "right_actions" in self._norm:
+            out = actions.copy()
+            out[0::2, :] = self._apply_norm_stats(out[0::2, :], self._norm["left_actions"])
+            out[1::2, :] = self._apply_norm_stats(out[1::2, :], self._norm["right_actions"])
+            return out
+
+        # fallback to global actions norm (keeps behavior consistent with your pipeline)
+        if "actions" in self._norm:
+            return self._apply_norm_stats(actions, self._norm["actions"])
+
+        return actions
+
+
     # CHANGED: __getitem__ tail portion
     def __getitem__(self, index):
         ep_id, start_ts = self.index[index]
@@ -952,6 +998,11 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         if (random.random() < WRIST_DROPOUT):
             wrist_image_left[...]  = 0
             wrist_image_right[...] = 0
+
+        # TODO: now we have the option to custom norm!
+        if self.apply_custom_norm:
+            actions = self._maybe_norm_actions_per_hand(actions).astype(np.float32, copy=False)
+            state   = self._maybe_norm_state(state).astype(np.float32, copy=False)
 
         return {
             "image": image.astype(np.uint8),
