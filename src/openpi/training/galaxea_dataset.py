@@ -397,7 +397,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
                  urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
                  urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
                  mask_wrist: bool = False,
-                 apply_custom_norm = False, # TODO: we have option to specify custom norm
+                 apply_custom_norm = True, # TODO: we have option to specify custom norm
                  norm_stats_path: str = None,): # TODO: and the path for the custom norm params
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
@@ -467,7 +467,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         )
 
         # TODO: use me only for computig norm stats!
-        # self.episode_dirs = random.sample(self.episode_dirs, 35)
+        # self.episode_dirs = random.sample(self.episode_dirs, 40)
         # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
         # Precompute (episode_len) for each episode by reading its CSV once
@@ -994,7 +994,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         #     wrist_image_right = zero
 
         # TODO: now I'm dropping out wrist cameras!
-        WRIST_DROPOUT = 0.40 
+        WRIST_DROPOUT = 0.35
         if (random.random() < WRIST_DROPOUT):
             wrist_image_left[...]  = 0
             wrist_image_right[...] = 0

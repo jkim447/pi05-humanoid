@@ -24,5 +24,5 @@ source set_env.sh
 # CUDA_VISIBLE_DEVICES=0,1,2,3 \
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 \
 uv run scripts/train.py pi05_galaxea_egodex_abs_joints \
-    --exp-name=galaxea_egodex_abs_joints_sort_blocks_no_wrist_40_percent_baseline \
+    --exp-name=galaxea_egodex_abs_joints_sort_block_plates_baseline_1104 \
     --overwrite

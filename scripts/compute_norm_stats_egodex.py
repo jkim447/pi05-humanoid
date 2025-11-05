@@ -116,12 +116,27 @@ def main(config_name: str, max_frames: int | None = None):
         )
 
     print(num_batches, "batches in dataset")
-    keys = ["state", "actions"]
+    # keys = ["state", "actions"]
+    keys = ["state", "actions", "left_actions", "right_actions"]
     stats = {key: normalize.RunningStats() for key in keys}
 
     for batch in tqdm.tqdm(data_loader, total=num_batches, desc="Computing stats"):
-        for key in keys:
-            stats[key].update(np.asarray(batch[key]))
+         # keep original global stats
+        stats["state"].update(np.asarray(batch["state"]))
+        stats["actions"].update(np.asarray(batch["actions"]))
+
+        # per-hand split (interleaved [L, R, L, R, ...])
+        A = np.asarray(batch["actions"])                  # (B, T, D) usually
+        A = A.reshape(-1, A.shape[-2], A.shape[-1])       # (B, T, D) robustly
+
+        left_actions  = A[:, 0::2, :]                     # even timesteps -> left
+        right_actions = A[:, 1::2, :]                     # odd timesteps  -> right
+
+        stats["left_actions"].update(left_actions)
+        stats["right_actions"].update(right_actions)
+        
+        # for key in keys:
+        #     stats[key].update(np.asarray(batch[key]))
             # print("processing")
         # exit after a few batches
         # if stats["state"].count > 10:

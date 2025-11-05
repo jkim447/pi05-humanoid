@@ -118,7 +118,9 @@ class HumanDatasetKeypointsJoints(Dataset):
     def __init__(self, dataset_dir: str, chunk_size: int, stride: int = 2,
                  img_height: int = 224, img_width: int = 224, overlay: bool = False,
                  custom_instruction: str = None,
-                 calib_h: int = 720, calib_w: int = 1280):
+                 calib_h: int = 720, calib_w: int = 1280,
+                 apply_custom_norm: bool = False,                # add
+                 norm_stats_path: str | None = None):            # add):
         super().__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size  = chunk_size
@@ -129,6 +131,12 @@ class HumanDatasetKeypointsJoints(Dataset):
         self.custom_instruction = custom_instruction
         self.calib_h     = calib_h
         self.calib_w     = calib_w
+        self.apply_custom_norm = apply_custom_norm              # add
+        self._norm = None                                       # add
+        if self.apply_custom_norm and norm_stats_path is not None and os.path.exists(norm_stats_path):  # add
+            p = norm_stats_path                                                                       # add
+            load_dir = p if os.path.isdir(p) else os.path.dirname(p)                                  # add
+            self._norm = normalize.load(load_dir)      
 
         # Column names expected in robot_commands.csv (same as your original)
         self.wrist_xyz  = ["right_wrist_x","right_wrist_y","right_wrist_z"]
@@ -165,9 +173,9 @@ class HumanDatasetKeypointsJoints(Dataset):
         )
 
         # TODO: use me only when computing norm stats!
-        # num_episodes_to_keep = 20
-        # if len(episode_dirs) > num_episodes_to_keep:
-        #     episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
+        num_episodes_to_keep = 40
+        if len(episode_dirs) > num_episodes_to_keep:
+            episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
 
         # Precompute valid episodes and lengths by reading robot_commands.csv
         self.episodes = []  # list of (demo_dir, length)
@@ -347,6 +355,38 @@ class HumanDatasetKeypointsJoints(Dataset):
         rgb = cv2.resize(rgb, (out_w, out_h), interpolation=cv2.INTER_AREA)
         return rgb.astype(np.uint8)
 
+    def _apply_norm_stats(self, x: np.ndarray, stats, eps: float = 1e-6) -> np.ndarray:
+        # mirror Normalize._normalize behavior: slice stats to last-dim and same eps
+        D = x.shape[-1]
+        mean = stats.mean[..., :D]
+        std  = stats.std[...,  :D]
+        return (x - mean) / (std + eps)
+
+    def _maybe_norm_state(self, state: np.ndarray) -> np.ndarray:
+        if self._norm is None or "state" not in self._norm:
+            assert False
+        return self._apply_norm_stats(state, self._norm["state"])
+
+    def _maybe_norm_actions_per_hand(self, actions: np.ndarray) -> np.ndarray:
+        """
+        actions: (T, D) interleaved [L,R,L,R,...]
+        This dataset encodes L as zeros and R as real; still normalize per-hand if stats exist.
+        Fallback to global 'actions' stats if per-hand not present.
+        """
+        if self._norm is None:
+            assert False
+
+        if "left_actions" in self._norm and "right_actions" in self._norm:
+            out = actions.copy()
+            out[0::2, :] = self._apply_norm_stats(out[0::2, :], self._norm["left_actions"])   # even → left
+            out[1::2, :] = self._apply_norm_stats(out[1::2, :], self._norm["right_actions"])  # odd  → right
+            return out
+
+        if "actions" in self._norm:
+            return self._apply_norm_stats(actions, self._norm["actions"])
+
+        return actions
+
 
     def __getitem__(self, index):
         ep_id, t0 = self.index[index]
@@ -410,6 +450,10 @@ class HumanDatasetKeypointsJoints(Dataset):
 
         H, W, C = img.shape
         zeros_img = np.zeros_like(img, dtype=np.uint8)
+
+        if self.apply_custom_norm:
+            actions_out = self._maybe_norm_actions_per_hand(actions_out).astype(np.float32, copy=False)
+            state       = self._maybe_norm_state(state).astype(np.float32, copy=False)
 
         return {
             "image":   img.astype(np.uint8),      # (H,W,3) uint8 RGB

@@ -40,8 +40,14 @@ def create_torch_dataloader(
         raise ValueError("Data config must have a repo_id")
     # dataset = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
     # TODO: revise this accordingly to your dataset signature
-    _, ds1, ds2, ds3, ds4, ds5, ds6 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
-    dataset = ConcatDataset([ds1, ds2, ds3, ds4, ds5, ds6])
+    # _, ds1, ds2, ds3, ds4, ds5, ds6 = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    # dataset = ConcatDataset([ds1, ds2, ds3, ds4, ds5, ds6])
+
+    # TODO: this will only pick out robot and human datasets
+    # TODO: might need to reduce the number of episodes in each dataset for faster computation
+    datasets_info = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    datasets = [ds for (kind, _w, ds) in datasets_info if kind in {"robot", "human"}]
+    dataset = ConcatDataset(datasets)
 
     dataset = _data_loader.TransformedDataset(
         dataset,
