@@ -341,7 +341,7 @@ class EgoDexSeqDataset(Dataset):
             # ---- pick a fixed number of episodes per task ----
             # TODO: when computing norm stats, might want to reduce to 25 or something 
             # TODO: note that if this line is active, we're using zero training data in most tasks!
-            episodes_per_task = 0
+            episodes_per_task = 100
             rng = random.Random(42)
 
             # tasks you want to fully include

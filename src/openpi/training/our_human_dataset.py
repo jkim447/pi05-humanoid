@@ -11,6 +11,7 @@ from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
 from openpi.training.hand_keypoints_config import JOINT_COLOR_BGR, LEFT_FINGERS, RIGHT_FINGERS
 import random
+import openpi.shared.normalize as normalize  # you already have this in your repo
 
 # MANO right-hand semantic names by index (0..20)
 MANO_RIGHT_NAMES = [
@@ -20,6 +21,16 @@ MANO_RIGHT_NAMES = [
     "rightMiddleFingerKnuckle","rightMiddleFingerIntermediateBase","rightMiddleFingerIntermediateTip","rightMiddleFingerTip",  # 9..12
     "rightRingFingerKnuckle","rightRingFingerIntermediateBase","rightRingFingerIntermediateTip","rightRingFingerTip",  # 13..16
     "rightLittleFingerKnuckle","rightLittleFingerIntermediateBase","rightLittleFingerIntermediateTip","rightLittleFingerTip",  # 17..20
+]
+
+# MANO left-hand semantic names by index (0..20)
+MANO_LEFT_NAMES = [
+    "leftHand",
+    "leftThumbKnuckle","leftThumbIntermediateBase","leftThumbIntermediateTip","leftThumbTip",
+    "leftIndexFingerKnuckle","leftIndexFingerIntermediateBase","leftIndexFingerIntermediateTip","leftIndexFingerTip",
+    "leftMiddleFingerKnuckle","leftMiddleFingerIntermediateBase","leftMiddleFingerIntermediateTip","leftMiddleFingerTip",
+    "leftRingFingerKnuckle","leftRingFingerIntermediateBase","leftRingFingerIntermediateTip","leftRingFingerTip",
+    "leftLittleFingerKnuckle","leftLittleFingerIntermediateBase","leftLittleFingerIntermediateTip","leftLittleFingerTip",
 ]
 
 # --------- Camera intrinsics (raw resolution) ---------
@@ -116,11 +127,15 @@ class HumanDatasetKeypointsJoints(Dataset):
       - Overlay is drawn on the resized left image using a scaled K.
     """
     def __init__(self, dataset_dir: str, chunk_size: int, stride: int = 2,
-                 img_height: int = 224, img_width: int = 224, overlay: bool = False,
+                 img_height: int = 224, img_width: int = 224, 
+                 overlay: bool = True,
+                 overlay_both: bool = False,
                  custom_instruction: str = None,
                  calib_h: int = 720, calib_w: int = 1280,
+                 both_actions: bool = False,
                  apply_custom_norm: bool = False,                # add
-                 norm_stats_path: str | None = None):            # add):
+                 norm_stats_path: str | None = None,
+                 ):            # add):
         super().__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size  = chunk_size
@@ -133,6 +148,10 @@ class HumanDatasetKeypointsJoints(Dataset):
         self.calib_w     = calib_w
         self.apply_custom_norm = apply_custom_norm              # add
         self._norm = None                                       # add
+        # option to overlay keypoints on the left hand, by default right hand is always overlaid
+        self.overlay_both = overlay_both 
+        self.both_actions = both_actions  # ← add
+
         if self.apply_custom_norm and norm_stats_path is not None and os.path.exists(norm_stats_path):  # add
             p = norm_stats_path                                                                       # add
             load_dir = p if os.path.isdir(p) else os.path.dirname(p)                                  # add
@@ -145,6 +164,12 @@ class HumanDatasetKeypointsJoints(Dataset):
         tip_ids = [4, 8, 12, 16, 20]  # MANO-style tip indices
         self.tip_cols = sum([[f"right_hand_kp{i}_x", f"right_hand_kp{i}_y", f"right_hand_kp{i}_z"] for i in tip_ids], [])
         self.kp_cols = sum([[f"right_hand_kp{i}_x", f"right_hand_kp{i}_y", f"right_hand_kp{i}_z"]
+                            for i in range(21)], [])
+        
+        self.left_wrist_xyz  = ["left_wrist_x","left_wrist_y","left_wrist_z"]                     # ← add
+        self.left_wrist_quat = ["left_wrist_qx","left_wrist_qy","left_wrist_qz","left_wrist_qw"]  # ← add
+        self.left_joint_cols = [f"left_hand_{i}" for i in range(20)]                              # ← add
+        self.left_kp_cols = sum([[f"left_hand_kp{i}_x", f"left_hand_kp{i}_y", f"left_hand_kp{i}_z"]
                             for i in range(21)], [])
 
         # Skeleton edges in MANO indexing (wrist to finger bases, each finger chain)
@@ -173,9 +198,9 @@ class HumanDatasetKeypointsJoints(Dataset):
         )
 
         # TODO: use me only when computing norm stats!
-        num_episodes_to_keep = 40
-        if len(episode_dirs) > num_episodes_to_keep:
-            episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
+        # num_episodes_to_keep = 23
+        # if len(episode_dirs) > num_episodes_to_keep:
+        #     episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
 
         # Precompute valid episodes and lengths by reading robot_commands.csv
         self.episodes = []  # list of (demo_dir, length)
@@ -262,25 +287,35 @@ class HumanDatasetKeypointsJoints(Dataset):
         im = cv2.imread(path)
         return im
 
-    def _row_keypoints_cam(self, row) -> np.ndarray:
-        """
-        Return all 21 MANO keypoints transformed to the *camera* frame.
-        Shape: (21, 3), dtype float32.
-        """
+    # def _row_keypoints_cam(self, row) -> np.ndarray:
+    #     """
+    #     Return all 21 MANO keypoints transformed to the *camera* frame.
+    #     Shape: (21, 3), dtype float32.
+    #     """
+    #     pts = []
+    #     for i in range(0, len(self.kp_cols), 3):
+    #         px = row[self.kp_cols[i+0]]
+    #         py = row[self.kp_cols[i+1]]
+    #         pz = row[self.kp_cols[i+2]]
+    #         pts.append(self._pos_base_to_cam([px, py, pz]))
+    #     return np.stack(pts, axis=0).astype(np.float32)  # (21, 3)
+
+    def _row_keypoints_cam(self, row, hand: str = "right") -> np.ndarray:
+        cols = self.kp_cols if hand == "right" else self.left_kp_cols
         pts = []
-        for i in range(0, len(self.kp_cols), 3):
-            px = row[self.kp_cols[i+0]]
-            py = row[self.kp_cols[i+1]]
-            pz = row[self.kp_cols[i+2]]
+        for i in range(0, len(cols), 3):
+            px = row[cols[i+0]]
+            py = row[cols[i+1]]
+            pz = row[cols[i+2]]
             pts.append(self._pos_base_to_cam([px, py, pz]))
         return np.stack(pts, axis=0).astype(np.float32)  # (21, 3)
 
     def _draw_hand_skeleton(self, img_bgr: np.ndarray, kps_cam: np.ndarray,
-                        raw_h: int, raw_w: int, out_h: int, out_w: int) -> np.ndarray:
+                        raw_h: int, raw_w: int, out_h: int, out_w: int,
+                        names: list[str]) -> np.ndarray:
         # We draw on the raw image (raw_h, raw_w), so scale K to that size once.
         K_img = self._scaled_K_for_image(raw_w, raw_h)
 
-        names = MANO_RIGHT_NAMES
         uv, z = [], []
         for (x, y, zc) in kps_cam:
             u, v = self._project(K_img, (x, y, zc))
@@ -336,17 +371,34 @@ class HumanDatasetKeypointsJoints(Dataset):
         h0, w0 = bgr.shape[:2]
         return bgr, (h0, w0)   # return RAW BGR, no resize, keep original size
 
-    def _row_wrist_cam_pos6(self, row):
-        # position in camera frame
-        p_cam = self._pos_base_to_cam([row[c] for c in self.wrist_xyz])  # (3,)
-        # orientation 6D in camera frame
-        R_base = R.from_quat([row[c] for c in self.wrist_quat]).as_matrix()
+    # def _row_wrist_cam_pos6(self, row, hand):
+    #     wrist_xyz  = self.wrist_xyz  if hand == "right" else self.left_wrist_xyz   # ← add
+    #     wrist_quat = self.wrist_quat if hand == "right" else self.left_wrist_quat  # ← add
+    #     # position in camera frame
+    #     p_cam = self._pos_base_to_cam([row[c] for c in self.wrist_xyz])  # (3,)
+    #     # orientation 6D in camera frame
+    #     R_base = R.from_quat([row[c] for c in self.wrist_quat]).as_matrix()
+    #     R_cam  = self._rot_base_to_cam(R_base)
+    #     rot6   = R_cam[:, :2].reshape(-1, order="F").astype(np.float32)  # (6,)
+    #     return p_cam.astype(np.float32), rot6
+
+    def _row_wrist_cam_pos6(self, row, hand: str = "right"):                       # ← change
+        wrist_xyz  = self.wrist_xyz  if hand == "right" else self.left_wrist_xyz   # ← add
+        wrist_quat = self.wrist_quat if hand == "right" else self.left_wrist_quat  # ← add
+        p_cam = self._pos_base_to_cam([row[c] for c in wrist_xyz])
+        R_base = R.from_quat([row[c] for c in wrist_quat]).as_matrix()
         R_cam  = self._rot_base_to_cam(R_base)
-        rot6   = R_cam[:, :2].reshape(-1, order="F").astype(np.float32)  # (6,)
+        rot6   = R_cam[:, :2].reshape(-1, order="F").astype(np.float32)
         return p_cam.astype(np.float32), rot6
 
-    def _row_joints20(self, row):
-        return np.asarray([row[c] for c in self.joint_cols], dtype=np.float32)  # (20,)
+
+    # def _row_joints20(self, row, hand):
+    #     cols = self.joint_cols if hand == "right" else self.left_joint_cols         # ← add
+    #     return np.asarray([row[c] for c in self.joint_cols], dtype=np.float32)  # (20,)
+
+    def _row_joints20(self, row, hand: str = "right"):                              # ← change
+        cols = self.joint_cols if hand == "right" else self.left_joint_cols         # ← add
+        return np.asarray([row[c] for c in cols], dtype=np.float32)
 
     @staticmethod
     def _to_rgb_uint8_and_resize(bgr_img: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
@@ -405,45 +457,74 @@ class HumanDatasetKeypointsJoints(Dataset):
 
         # --- state (32): [L pos3+rot6 zeros(9), R pos3+rot6 abs(9), L joints[1:8] zeros(7), R joints[1:8] abs(7)] ---
         row0 = df.iloc[t0]
-        R_pos0, R_rot60 = self._row_wrist_cam_pos6(row0)
-        qR0 = self._row_joints20(row0)
+        R_pos0, R_rot60 = self._row_wrist_cam_pos6(row0, hand="right")      # ← add hand
+        qR0             = self._row_joints20(row0, hand="right")            # ← add hand
+        R_j7_abs        = qR0[1:8].astype(np.float32)
 
-        L_posrot6_zeros = np.zeros(9, np.float32)
-        L_j7_zeros      = np.zeros(7, np.float32)
-        R_j7_abs        = qR0[1:8].astype(np.float32)  # right_hand_1 .. right_hand_7
+        if self.both_actions:                                               # ← add
+            L_pos0, L_rot60 = self._row_wrist_cam_pos6(row0, hand="left")   # ← add
+            qL0             = self._row_joints20(row0, hand="left")         # ← add
+            L_j7            = qL0[1:8].astype(np.float32)                   # ← add
+            # L_posrot6       = np.concatenate([L_pos0, L_rot60], dtype=np.float32)
+            L_posrot6 = np.concatenate([L_pos0, L_rot60]).astype(np.float32)
+        else:
+            L_posrot6       = np.zeros(9, np.float32)                       # ← add
+            L_j7            = np.zeros(7, np.float32)                       # ← add
 
-        state = np.concatenate([L_posrot6_zeros, R_pos0, R_rot60, L_j7_zeros, R_j7_abs], dtype=np.float32)
+        # state = np.concatenate([L_posrot6, R_pos0, R_rot60, L_j7, R_j7_abs], dtype=np.float32)
+        state = np.concatenate([L_posrot6, R_pos0, R_rot60, L_j7, R_j7_abs]).astype(np.float32)
+
 
         # --- actions (2*chunk, 29): interleaved [zeros(29), right(Δpos3, Δrot6, Δjoints20)] ---
         # reference at t0
         ref_pos, ref_rot6, ref_qR = R_pos0, R_rot60, qR0
+
+        if self.both_actions:                                              # ← add
+           ref_pos_L, ref_rot6_L, ref_qL = L_pos0, L_rot60, qL0
 
         actions_lr = []
         for dt in range(self.chunk_size):
             t = t0 + dt * self.stride
             if t < N:
                 row_t = df.iloc[t]
-                pos_t, rot6_t = self._row_wrist_cam_pos6(row_t)
-                qR_t = self._row_joints20(row_t)
 
-                dpos  = (pos_t  - ref_pos).astype(np.float32)   # (3,)
-                drot6 = (rot6_t - ref_rot6).astype(np.float32)  # (6,)
-                dqR   = (qR_t   - ref_qR).astype(np.float32)    # (20,)
+                # right deltas
+                pos_t_r, rot6_t_r = self._row_wrist_cam_pos6(row_t, hand="right")
+                qR_t = self._row_joints20(row_t, hand="right")
+                dpos_r  = (pos_t_r  - ref_pos).astype(np.float32)
+                drot6_r = (rot6_t_r - ref_rot6).astype(np.float32)
+                jR_abs  = qR_t.astype(np.float32)  # absolute joints
+                right   = np.concatenate([dpos_r, drot6_r, jR_abs], axis=0).astype(np.float32)
 
-                right = np.concatenate([dpos, drot6, dqR], axis=0).astype(np.float32)  # (29,)
-                actions_lr.extend([np.zeros(29, np.float32), right])
+                # left deltas
+                if self.both_actions:
+                    pos_t_l, rot6_t_l = self._row_wrist_cam_pos6(row_t, hand="left")
+                    qL_t = self._row_joints20(row_t, hand="left")
+                    dpos_l  = (pos_t_l  - ref_pos_L).astype(np.float32)
+                    drot6_l = (rot6_t_l - ref_rot6_L).astype(np.float32)
+                    jL_abs  = qL_t.astype(np.float32)  # absolute joints
+                    left = np.concatenate([dpos_l, drot6_l, jL_abs], axis=0).astype(np.float32)
+                else:
+                    left = np.zeros(29, np.float32)
+
+                actions_lr.extend([left, right])
             else:
-                # out of range → pad both tokens with zeros (explicit and easy to read)
                 actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
-
         actions_out = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*chunk, 29)
 
         # --- visualization (optional) & final image as uint8 ---
         if self.overlay:
             vis_raw = bgr_raw.copy()
-            kps_cam = self._row_keypoints_cam(df.iloc[t0])  # (21,3) in cam
-            vis_raw = self._draw_hand_skeleton(vis_raw, kps_cam, raw_h, raw_w, raw_h, raw_w) # BGR
+            # Right hand (existing)
+            kps_r_cam = self._row_keypoints_cam(df.iloc[t0], hand="right")
+            vis_raw = self._draw_hand_skeleton(vis_raw, kps_r_cam, raw_h, raw_w, raw_h, raw_w,
+                                            names=MANO_RIGHT_NAMES)
+            if self.overlay_both:
+                kps_l_cam = self._row_keypoints_cam(df.iloc[t0], hand="left")
+                vis_raw = self._draw_hand_skeleton(vis_raw, kps_l_cam, raw_h, raw_w, raw_h, raw_w,
+                                                names=MANO_LEFT_NAMES)
             img = self._to_rgb_uint8_and_resize(vis_raw, self.img_w, self.img_h)
+        
         else:
             img = self._to_rgb_uint8_and_resize(bgr_raw, self.img_w, self.img_h)
 
@@ -495,13 +576,16 @@ class HumanDatasetKeypointsJoints(Dataset):
 # def main():
 #     ds = HumanDatasetKeypointsJoints(
 #         # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
-#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1101",
+#         # dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105",
+#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_PULL_BOX_1105",
 #         chunk_size=20,
 #         stride=2,
 #         img_height=224,
 #         img_width=224,
 #         overlay=True,   # draws wrist + 5 tips on the resized left image
 #         custom_instruction="vertical_pick_place",
+#         overlay_both=True,  # do not overlay left hand
+#         both_actions=True,  # include left-hand actions as well # TODO: change this if needed
 #     )
 
 #     loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
@@ -531,7 +615,7 @@ class HumanDatasetKeypointsJoints(Dataset):
 #             s_np = state.detach().cpu().numpy()
 #             a_np = actions.detach().cpu().numpy()
 #         print("   state[:8]:", s_np[:8])
-#         print("   actions[1, :8] (first right-hand token):", a_np[1, :8])
+#         print("   actions[1, :8] (first right-hand token):", a_np[2, :8])
 
 #         if i >= 10:  # first 5 samples only
 #             break

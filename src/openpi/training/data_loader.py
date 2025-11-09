@@ -209,6 +209,7 @@ def create_torch_dataset(
                 overlay=entry.overlay,
                 mask_wrist=entry.mask_wrist,
                 apply_custom_norm=entry.apply_custom_norm,
+                norm_stats_path=entry.norm_stats_path,  # TODO: specify norm stats path if needed
             )
         elif entry.kind == "human":
             ds = HumanDatasetKeypointsJoints(
@@ -219,6 +220,10 @@ def create_torch_dataset(
                 img_width=224,
                 overlay=entry.overlay,
                 custom_instruction=entry.task,
+                apply_custom_norm=entry.apply_custom_norm,
+                norm_stats_path=entry.norm_stats_path,  # TODO: specify norm stats path if needed
+                overlay_both=entry.overlay_both,
+                both_actions=entry.both_actions, # TODO: new argument for bimanual action data  
             )
         else:
             raise ValueError(f"Unknown dataset kind: {entry.kind}")
@@ -411,7 +416,7 @@ def create_torch_data_loader(
     transformed_info = []
     for kind, w, ds in datasets_info:
         cfg = data_config if kind == "egodex" else data_config2
-        transformed_info.append((kind, w, transform_dataset_no_normalization(ds, cfg, skip_norm_stats=skip_norm_stats)))
+        transformed_info.append((kind, w, transform_dataset(ds, cfg, skip_norm_stats=skip_norm_stats)))
         print("WARNING: skipping normalization for dataset kind, MAKE SURE CUSTOM NORM IS IMPLEMENTED:", kind)
 
     # Merge
@@ -459,7 +464,6 @@ def create_torch_data_loader(
         num_samples=sum(lengths),
         generator=torch.Generator().manual_seed(seed),
     )
-
 
     logging.info(f"local_batch_size: {local_batch_size}")
     data_loader = TorchDataLoader(

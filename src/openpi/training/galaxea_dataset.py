@@ -191,7 +191,7 @@ def _link_to_mano(name: str) -> str | None:
     return f"{side_prefix}{finger_word}{seg}"
 
 
-# TODO: add keypoint offsets as needed (also fix visualization)
+# add keypoint offsets as needed (also fix visualization)
 # --- OPTIONAL: per-hand visualization offsets (hand frame, meters) ---
 VIS_OFFSET_L = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # offset now in T_EE_TO_HAND_L
 VIS_OFFSET_R = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # offset now in T_EE_TO_HAND_R
@@ -277,14 +277,14 @@ _theta_y = np.pi
 _theta_z = -np.pi/2
 _right_theta_z = np.pi
 _R_y = np.array([[ np.cos(_theta_y), 0, np.sin(_theta_y)],
-                 [ 0, 1, 0],
-                 [-np.sin(_theta_y), 0, np.cos(_theta_y)]])
+                [ 0, 1, 0],
+                [-np.sin(_theta_y), 0, np.cos(_theta_y)]])
 _R_z = np.array([[np.cos(_theta_z),-np.sin(_theta_z),0],
-                 [np.sin(_theta_z), np.cos(_theta_z),0],
-                 [0,0,1]])
+                [np.sin(_theta_z), np.cos(_theta_z),0],
+                [0,0,1]])
 _R_right_z = np.array([[np.cos(_right_theta_z),-np.sin(_right_theta_z),0],
-                       [np.sin(_right_theta_z), np.cos(_right_theta_z),0],
-                       [0,0,1]])
+                    [np.sin(_right_theta_z), np.cos(_right_theta_z),0],
+                    [0,0,1]])
 
 # Add rotation offset to left hand (from FK_REF.py)
 _angle_5 = np.deg2rad(-5)
@@ -298,7 +298,7 @@ _R_y_offset = np.array([[ _c10, 0, _s10],
                         [ 0, 1, 0],
                         [-_s10, 0, _c10]])
 _T_ee_to_real_ee = np.eye(4)
-_T_ee_to_real_ee[:3, :3] = _R_x_offset @ _R_y_offset
+# _T_ee_to_real_ee[:3, :3] = _R_x_offset @ _R_y_offset
 
 # # Build left hand transform with rotation offset
 # _T_real_ee_to_hand_left = np.eye(4)
@@ -315,7 +315,16 @@ _T_ee_to_real_ee[:3, :3] = _R_x_offset @ _R_y_offset
 # Build left hand transform with rotation offset
 _T_real_ee_to_hand_left = np.eye(4)
 _T_real_ee_to_hand_left[:3,:3] = _R_y @ _R_z
-_T_real_ee_to_hand_left[:3,3] = [-0.0, -0.0, 0.00]
+# specify correct transformations for your hand
+# for block place sorting AND box pulling
+# _T_real_ee_to_hand_left[:3,3] = [0.0, -0.01, -0.04]
+# for duck pickup
+# _T_real_ee_to_hand_left[:3,3] = [0.005, -0.04, -0.03]
+# TODO: just use this offset for all datasets, feel free to change if needed
+_T_real_ee_to_hand_left[:3,3] = [0.01, -0.019, -0.04]
+
+
+
 T_EE_TO_HAND_L = _T_ee_to_real_ee @ _T_real_ee_to_hand_left  # with rotation offset
 
 # Right hand transform (no rotation offset)
@@ -394,11 +403,11 @@ TIP_LINKS_R = _tip_links("rl")
 class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
     def __init__(self, task: str, dataset_dir, chunk_size, stride=3, overlay=False,
                 #  hand_mode: str = "right",  # "left", "right", or "both"
-                 urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
-                 urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
-                 mask_wrist: bool = False,
-                 apply_custom_norm = True, # TODO: we have option to specify custom norm
-                 norm_stats_path: str = None,): # TODO: and the path for the custom norm params
+                urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
+                urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
+                mask_wrist: bool = False,
+                apply_custom_norm = False, # TODO: we have option to specify custom norm
+                norm_stats_path: str = None,): # TODO: and the path for the custom norm params, MUST be specified if applying custom norm
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
@@ -467,7 +476,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         )
 
         # TODO: use me only for computig norm stats!
-        # self.episode_dirs = random.sample(self.episode_dirs, 40)
+        # self.episode_dirs = random.sample(self.episode_dirs, 30)
         # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
         # Precompute (episode_len) for each episode by reading its CSV once
@@ -987,12 +996,6 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
         state = np.concatenate([pL0, oL0, pR0, oR0, cmd7L, cmd7R], axis=0).astype(np.float32)  # (32,)
 
-        # TODO: note that we're adding the option to mask wrist images
-        # if self.mask_wrist:                          # ← add
-        #     zero = np.zeros_like(image, dtype=np.uint8)
-        #     wrist_image_left  = zero
-        #     wrist_image_right = zero
-
         # TODO: now I'm dropping out wrist cameras!
         WRIST_DROPOUT = 0.35
         if (random.random() < WRIST_DROPOUT):
@@ -1000,6 +1003,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             wrist_image_right[...] = 0
 
         # TODO: now we have the option to custom norm!
+        # make sure the flag and path are both set, no error will be thrown otherwise
         if self.apply_custom_norm:
             actions = self._maybe_norm_actions_per_hand(actions).astype(np.float32, copy=False)
             state   = self._maybe_norm_state(state).astype(np.float32, copy=False)
@@ -1174,7 +1178,8 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
 # if __name__ == "__main__":
 #     # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TR_1101"
+#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
+#     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PULL_BOX_1105"
 #     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"
 
