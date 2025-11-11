@@ -546,6 +546,7 @@ class HumanDatasetKeypointsJoints(Dataset):
     }
 
 
+# TODO: make sure to comment out vis below!
 # test_human_dataset_simple.py
 # import os
 # import cv2
@@ -573,19 +574,25 @@ class HumanDatasetKeypointsJoints(Dataset):
 #     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 #     cv2.imwrite(out_path, bgr)
 
+
+# # HUMAN_PICK_REDCUBE_1107
+# # HUMAN_PICK_CHICKEN_1107
+# # HUMAN_PICK_CORN_1107
+# # HUMAN_PICK_PEPPER_1107
+
 # def main():
 #     ds = HumanDatasetKeypointsJoints(
 #         # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
 #         # dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105",
-#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_PULL_BOX_1105",
+#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_PICK_PEPPER_1107",
 #         chunk_size=20,
 #         stride=2,
 #         img_height=224,
 #         img_width=224,
 #         overlay=True,   # draws wrist + 5 tips on the resized left image
 #         custom_instruction="vertical_pick_place",
-#         overlay_both=True,  # do not overlay left hand
-#         both_actions=True,  # include left-hand actions as well # TODO: change this if needed
+#         # overlay_both=True,  # do not overlay left hand
+#         # both_actions=True,  # include left-hand actions as well # TODO: change this if needed
 #     )
 
 #     loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)

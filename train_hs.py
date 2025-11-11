@@ -5,7 +5,7 @@ def test(gpu_id):
     device = torch.device(f'cuda:{gpu_id}')
     tensors = []
     # Allocate memory
-    for i in range(1):
+    for i in range(2):
         tensors.append(torch.randn(5000, 5000, device=device))
     
     # Keep computing

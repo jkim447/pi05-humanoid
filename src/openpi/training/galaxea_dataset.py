@@ -321,8 +321,14 @@ _T_real_ee_to_hand_left[:3,:3] = _R_y @ _R_z
 # for duck pickup
 # _T_real_ee_to_hand_left[:3,3] = [0.005, -0.04, -0.03]
 # TODO: just use this offset for all datasets, feel free to change if needed
+# TODO: NOTE: this was used for block sorting and composition tasks, not sure why the same
+# is not not working with new collected data for pick place
 _T_real_ee_to_hand_left[:3,3] = [0.01, -0.019, -0.04]
+# TODO: NOTE: below is for new pick place
+# _T_real_ee_to_hand_left[:3,3] = [0.0, 0.03, -0.04]
 
+# TODO: comment me out!
+# _T_real_ee_to_hand_left[:3,3] = [0.01, 0.015, -0.05]
 
 
 T_EE_TO_HAND_L = _T_ee_to_real_ee @ _T_real_ee_to_hand_left  # with rotation offset
@@ -330,7 +336,15 @@ T_EE_TO_HAND_L = _T_ee_to_real_ee @ _T_real_ee_to_hand_left  # with rotation off
 # Right hand transform (no rotation offset)
 T_EE_TO_HAND_R = np.eye(4)
 T_EE_TO_HAND_R[:3,:3] = _R_y @ _R_z @ _R_right_z
+# TODO: NOTE: this was used for block sorting and composition tasks, not sure why the same
+# is not not working with new collected data for pick place
 T_EE_TO_HAND_R[:3,3] = [-0.01, -0.005, 0.015]
+# TODO: NOTE: below is for new pick place 
+# T_EE_TO_HAND_R[:3,3] = [-0.01, -0.06, 0.01] 
+
+# TODO: comment me out!
+# T_EE_TO_HAND_R[:3,3] = [-0.01, -0.06, 0.015]
+
 
 # Simple link groups to draw (right hand); prefixes in URDF are "rl_*"
 _HAND_LINK_GROUPS = {
@@ -407,7 +421,9 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
                 urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
                 mask_wrist: bool = False,
                 apply_custom_norm = False, # TODO: we have option to specify custom norm
-                norm_stats_path: str = None,): # TODO: and the path for the custom norm params, MUST be specified if applying custom norm
+                norm_stats_path: str = None, # TODO: and the path for the custom norm params, MUST be specified if applying custom norm
+                ee_to_hand_left_xyz: tuple[float,float,float] | None = None,
+                ee_to_hand_right_xyz: tuple[float,float,float] | None = None): 
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
@@ -418,6 +434,13 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         self.mask_wrist = mask_wrist
         self.apply_custom_norm = apply_custom_norm
         self._norm = None  # ← add this line
+        self.T_EE_TO_HAND_L = T_EE_TO_HAND_L.copy()
+        self.T_EE_TO_HAND_R = T_EE_TO_HAND_R.copy()
+        if ee_to_hand_left_xyz is not None:
+            self.T_EE_TO_HAND_L[:3, 3] = np.asarray(ee_to_hand_left_xyz, dtype=float)
+        if ee_to_hand_right_xyz is not None:
+            self.T_EE_TO_HAND_R[:3, 3] = np.asarray(ee_to_hand_right_xyz, dtype=float)
+
         if self.apply_custom_norm and norm_stats_path is not None and os.path.exists(norm_stats_path):
             self._norm = normalize.load(os.path.dirname(norm_stats_path))
         
@@ -546,13 +569,13 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         if side == "left":
             T_ee = _pose_to_T([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]],
                             [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]])
-            T_hand = T_ee @ T_EE_TO_HAND_L
+            T_hand = T_ee @ self.T_EE_TO_HAND_L
             robot, joint_names, prefix, wrist_name = self.robot_l, self.left_joint_names, "ll_", WRIST_L
             T_hand = _apply_vis_offset(T_hand, VIS_OFFSET_L)
         else:
             T_ee = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
                             [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]])
-            T_hand = T_ee @ T_EE_TO_HAND_R
+            T_hand = T_ee @ self.T_EE_TO_HAND_R
             robot, joint_names, prefix, wrist_name = self.robot_r, self.right_joint_names, "rl_", WRIST_R
             T_hand = _apply_vis_offset(T_hand, VIS_OFFSET_R)
 
@@ -647,36 +670,19 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             v = np.zeros(20, dtype=np.float64)  # last resort
         return v.astype(np.float32).tolist()
 
-    # NEW: FK for left hand world points
-    def _fk_points_left_world(self, row):
-        T_ee  = _pose_to_T([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]],
-                        [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]])
-        T_hand = T_ee @ T_EE_TO_HAND_L
-        angles = [float(row[f"left_actual_hand_{i}"]) for i in range(20)]
-        fk = self.robot_l.link_fk(cfg=dict(zip(self.left_joint_names, angles)), use_names=True)
-        T_fkbase_inv = np.linalg.inv(fk.get("FK_base", np.eye(4)))
-        pts = {}
-        for link_name, T_link_model in fk.items():
-            if not link_name.startswith("ll_"):
-                continue
-            T_link_in_hand = T_fkbase_inv @ T_link_model
-            T_world        = T_hand @ T_link_in_hand
-            pts[link_name] = T_world[:3, 3]
-        return pts
-
     # NEW: unified FK dispatcher
     def _fk_points_world(self, row, side: str, kind: str = "actual"):
         # EE -> HAND
         if side == "left":
             T_ee = _pose_to_T([row["left_pos_x"], row["left_pos_y"], row["left_pos_z"]],
                             [row["left_ori_x"], row["left_ori_y"], row["left_ori_z"], row["left_ori_w"]])
-            T_hand = T_ee @ T_EE_TO_HAND_L
+            T_hand = T_ee @ self.T_EE_TO_HAND_L
             robot, joint_names, prefix = self.robot_l, self.left_joint_names, "ll_"
             T_hand = _apply_vis_offset(T_hand, VIS_OFFSET_L)
         else:
             T_ee = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
                             [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]])
-            T_hand = T_ee @ T_EE_TO_HAND_R
+            T_hand = T_ee @ self.T_EE_TO_HAND_R
             T_hand = _apply_vis_offset(T_hand, VIS_OFFSET_R)
             robot, joint_names, prefix = self.robot_r, self.right_joint_names, "rl_"
 
@@ -739,35 +745,6 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         pts_map = self._fk_points_world(row, side, kind=kind)  # "cmd" or "actual"
         tip15 = self._tip_positions_in_left_cam(pts_map, side)
         return np.concatenate([p_cam, ori6d, tip15], axis=0).astype(np.float32)  # (24,)
-
-
-    def _fk_points_right_world(self, row):
-        # EE pose -> hand pose (world)
-        T_ee  = _pose_to_T([row["right_pos_x"], row["right_pos_y"], row["right_pos_z"]],
-                        [row["right_ori_x"], row["right_ori_y"], row["right_ori_z"], row["right_ori_w"]])
-        T_hand = T_ee @ T_EE_TO_HAND_R
-        # FK with 20 joint angles
-        angles = [float(row[f"right_actual_hand_{i}"]) for i in range(20)]
-        fk = self.robot_r.link_fk(cfg=dict(zip(self.right_joint_names, angles)), use_names=True)
-        T_fkbase_inv = np.linalg.inv(fk.get("FK_base", np.eye(4)))
-        pts = {}
-        for link_name, T_link_model in fk.items():
-            if not link_name.startswith("rl_"):  # right-hand links prefixed "rl_"
-                continue
-            T_link_in_hand = T_fkbase_inv @ T_link_model
-            T_world        = T_hand @ T_link_in_hand
-            pts[link_name] = T_world[:3, 3]
-        return pts  # {link_name: (x,y,z)}
-
-    def _put_label(self, img, text, xy, color=(255,255,255)):
-        """Draw small text with an outline for readability."""
-        x, y = int(xy[0]), int(xy[1])
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        fs, th = 0.22, 1
-        # black outline
-        cv2.putText(img, text, (x+1, y+1), font, fs, (0,0,0), th+2, cv2.LINE_AA)
-        # main text
-        cv2.putText(img, text, (x, y), font, fs, color, th, cv2.LINE_AA)
 
 
     def _project_draw_hands_on_left(self, img_bgr, pts_map_left=None, pts_map_right=None):
@@ -842,7 +819,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         p = os.path.join(demo_dir, cam_name, f"{ts:06d}.jpg")
         img = cv2.imread(p)
         if img is None:
-            raise FileNotFoundError(p)
+            return np.zeros((720, 1280, 3), dtype=np.uint8)
         return img  # raw BGR uint8
 
     def _resize_norm_rgb(self, img_bgr):
@@ -1173,12 +1150,13 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
 # def save_rgb01(path, rgb01):
 #     """rgb01: (H,W,3) float32 in [0,1]"""
-#     bgr_u8 = rgb01.astype(np.uint8)[:, :, ::-1]  # RGB->BGR
+#     bgr_u8 = rgb01.astype(np.uint8)[:, :, ::-1]  # RGB->Bgalaxea_datasetGR
 #     cv2.imwrite(path, bgr_u8)
 
 # if __name__ == "__main__":
 #     # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
+#     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
+#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_BLUE_RIGHT_1110"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PULL_BOX_1105"
 #     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"

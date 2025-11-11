@@ -987,14 +987,13 @@ _CONFIGS = [
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
         num_train_steps=300_000, # TODO: change as needed
-        batch_size=128, # TODO: change as needed
-        num_workers=6,
+        batch_size=256, # TODO: change as needed
+        num_workers=12,
         # save_interval = 100,
         # keep_period = 500,
 
         # batch_size=32, # TODO: change as needed
         # num_workers=0
-    
         # lr_schedule=_optimizer.CosineDecaySchedule(),
         # optimizer=_optimizer.AdamW(),
         # ema_decay=0.99,
@@ -1040,9 +1039,9 @@ _CONFIGS = [
         # ema_decay=0.999, # default is 0.99 if unspecified
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
-        num_train_steps=300_000, # TODO: change as needed
-        batch_size=256, # TODO: change as needed
-        num_workers=12,
+        num_train_steps=30_000, # TODO: change as needed
+        batch_size=64, # TODO: change as needed
+        num_workers=2,
         # save_interval = 500,
         # keep_period = 300,
 

@@ -15,6 +15,6 @@ def copy_robot_commands(src_root, dst_root):
             print(f"Skipped: {demo_name} (missing file or folder)")
 
 # Example usage:
-src = "/iris/projects/humanoid/hamer/FINAL_OUT_HUMAN/HUMAN_BOX_PLACE_COMBO_1105"
-dst = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105"
+src = "/iris/projects/humanoid/hamer/FINAL_OUT_HUMAN/HUMAN_BOX_PLACE_COMBO_1109"
+dst = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1109"
 copy_robot_commands(src, dst)
