@@ -50,15 +50,46 @@ class CheckpointWeightLoader(WeightLoader):
     def load(self, params: at.Params) -> at.Params:
         # We are loading np.ndarray and relying on the training code to properly convert and shard the params.
         loaded_params = _model.restore_params(download.maybe_download(self.params_path), restore_type=np.ndarray)
+
+         # Flatten checkpoint params
+        flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep="/")
+
+        # If your checkpoint stores everything under "params/...", strip it to match model keys
+        if flat_loaded and all(isinstance(k, str) and k.startswith("params/") for k in flat_loaded):
+            flat_loaded = {k[len("params/"):]: v for k, v in flat_loaded.items()}
+
+        # Drop exactly the offending keys. Use a robust regex to handle optional prefixes.
+        drop_re = re.compile(
+            # r"(?:.*/)?(?:(?:action_(?:in|out)_proj/(?:kernel|bias))|(state_proj/kernel))$"
+            r"(?:.*/)?action_(?:in|out)_proj/(?:kernel|bias)$"
+        )   
+
+        dropped = []
+        for k in list(flat_loaded.keys()):
+            if drop_re.fullmatch(k):
+                dropped.append((k, getattr(flat_loaded[k], "shape", None)))
+                del flat_loaded[k]
+
+        if dropped:
+            print("[CheckpointWeightLoader] Dropping keys so they re-init:")
+            for k, shp in dropped:
+                print("  DROP", k, "shape:", shp)
+        # Rebuild nested dict
+        loaded_params = flax.traverse_util.unflatten_dict(flat_loaded, sep="/")
+
         # print("[CheckpointWeightLoader] Loaded parameters:")
         # flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep="/")
         # for k in sorted(flat_loaded.keys()):
         #     v = flat_loaded[k]
         #     print(f"  {k}: shape={getattr(v, 'shape', None)}, dtype={getattr(v, 'dtype', None)}")
         # assert False
-        # Add all missing LoRA weights.
-        return _merge_params(loaded_params, params, missing_regex=".*lora.*")
 
+        # original
+        # return _merge_params(loaded_params, params, missing_regex=".*lora.*")
+
+        # Add all missing LoRA weights.
+        # TODO: missing_regex of ".*" might be too general and remiss
+        return _merge_params(loaded_params, params, missing_regex=".*") 
 
 @dataclasses.dataclass(frozen=True)
 class PaliGemmaWeightLoader(WeightLoader):
@@ -78,33 +109,54 @@ class PaliGemmaWeightLoader(WeightLoader):
         # Add all missing weights.
         return _merge_params(loaded_params, params, missing_regex=".*")
 
-
 def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex: str) -> at.Params:
-    """Merges the loaded parameters with the reference parameters.
-
-    Args:
-        loaded_params: The parameters to merge.
-        params: The reference parameters.
-        missing_regex: A regex pattern for all missing keys that should be merged from the reference parameters.
-
-    Returns:
-        A new dictionary with the merged parameters.
-    """
     flat_ref = flax.traverse_util.flatten_dict(params, sep="/")
-    flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep="/")
+    flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep="/") # NOTE: loaded params do not contain the action projection layers, since we surgically removed them
 
-    # First, take all weights that are a subset of the reference weights.
+    # Take weights whose keys exist AND shapes match; cast to ref dtype.
     result = {}
-    for k, v in flat_loaded.items():
-        if k in flat_ref:
-            result[k] = v.astype(flat_ref[k].dtype) if v.dtype != flat_ref[k].dtype else v
+    for k, v in flat_loaded.items(): # go through loaded weight
+        if k in flat_ref: # if loaded key exists in the model key
+            ref = flat_ref[k] # get the model weight for this key
+            if getattr(v, "shape", None) == getattr(ref, "shape", None):
+                result[k] = v.astype(getattr(ref, "dtype", getattr(v, "dtype", None)))
+            # else: skip; will be backfilled below if allowed by regex
 
-    flat_loaded.clear()
-
-    # Then, merge any missing weights as defined by the missing regex.
+    # Backfill missing/skipped keys according to policy.
     pattern = re.compile(missing_regex)
-    for k in {k for k in flat_ref if pattern.fullmatch(k)}:
-        if k not in result:
-            result[k] = flat_ref[k]
+    for k, ref in flat_ref.items():
+        if k not in result and pattern.fullmatch(k):
+            result[k] = ref
 
     return flax.traverse_util.unflatten_dict(result, sep="/")
+
+# original merge_params
+# def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex: str) -> at.Params:
+#     """Merges the loaded parameters with the reference parameters.
+
+#     Args:
+#         loaded_params: The parameters to merge.
+#         params: The reference parameters.
+#         missing_regex: A regex pattern for all missing keys that should be merged from the reference parameters.
+
+#     Returns:
+#         A new dictionary with the merged parameters.
+#     """
+#     flat_ref = flax.traverse_util.flatten_dict(params, sep="/")
+#     flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep="/")
+
+#     # First, take all weights that are a subset of the reference weights.
+#     result = {}
+#     for k, v in flat_loaded.items():
+#         if k in flat_ref:
+#             result[k] = v.astype(flat_ref[k].dtype) if v.dtype != flat_ref[k].dtype else v
+
+#     flat_loaded.clear()
+
+#     # Then, merge any missing weights as defined by the missing regex.
+#     pattern = re.compile(missing_regex)
+#     for k in {k for k in flat_ref if pattern.fullmatch(k)}:
+#         if k not in result:
+#             result[k] = flat_ref[k]
+
+#     return flax.traverse_util.unflatten_dict(result, sep="/")

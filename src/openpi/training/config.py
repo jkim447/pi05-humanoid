@@ -957,7 +957,8 @@ _CONFIGS = [
 
         # Full fine-tuning of tshe standard Pi-0 architecture.
         # model=pi0.Pi0Config(),
-        model=pi0_config.Pi0Config(action_dim=32, pi05=True),
+        # TODO: note that the action dims have been changed to 58, since this branch involves using no interleave actions
+        model=pi0_config.Pi0Config(action_dim=58, pi05=True),
 
         # Point to your Galaxea LeRobot repo and use the Galaxea-specific transforms.
         data=EgodexDataConfig(
