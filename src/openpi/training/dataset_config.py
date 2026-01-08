@@ -31,7 +31,7 @@ base_pth = "/iris/projects/humanoid/dataset/"
 ###############################################################################
 ###############################################################################
 ###############################################################################
-# PICK PLACE REDO
+# PICK PLACE REDO USE ME! 11132025
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -41,7 +41,7 @@ base_pth = "/iris/projects/humanoid/dataset/"
 ########################################
 
 # TODO: set accordingly, set False for ablation study
-# overlay = False
+# overlay = True
 # DATASETS = [
 #     DatasetEntry(
 #         kind="robot",
@@ -129,6 +129,310 @@ base_pth = "/iris/projects/humanoid/dataset/"
 ###############################################################################
 ###############################################################################
 
+#####################################################
+# YET ANOTHER NEW COMPOSITION BASELINE 11112025 USE ME
+#####################################################
+
+# DATASETS = [
+
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111",
+#         weight=0.50,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=True,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, 0.02, -0.035],
+#         ee_to_hand_right_xyz = [-0.01, -0.07, 0.00]
+
+#         # TODO: add custom offsets here for good measure
+#     ),
+
+#     # below is sort cotrain data
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110",
+#         weight=0.25,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=True,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, 0.015, -0.05], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.06, 0.015]
+#     ),
+
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",
+#         weight=0.25,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=True,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
+#         # TODO: add custom offsets here for good measure
+#     ),
+# ]
+
+#####################################################
+# YET ANOTHER NEW COMPOSITION! 11112025 USE ME
+#####################################################
+# TODO: set false for no keypoint baseline
+# overlay = True # TODO: set this option accordingly!
+# DATASETS = [
+
+# #     # below is composition data
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
+#         weight=0.34,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         overlay_both=True, # TODO: the option to overlay both hands is set!
+#         both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+#     ),
+
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_1111",
+#         weight=0.03,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         overlay_both=True, # TODO: the option to overlay both hands is set!
+#         both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+#     ),
+
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1104_COPY",
+#         weight=0.03,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None
+#     ),    
+
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111",
+#         weight=0.3,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, 0.02, -0.035],
+#         ee_to_hand_right_xyz = [-0.01, -0.07, 0.00]
+
+#         # TODO: add custom offsets here for good measure
+#     ),
+
+#     # below is sort cotrain data
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110",
+#         weight=0.15,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, 0.015, -0.05], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.06, 0.015]
+#     ),
+
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",
+#         weight=0.15,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
+#         # TODO: add custom offsets here for good measure
+#     ),
+# ]
+
+#####################################################
+# Composition fade away overlay! 01052026 USE ME
+#####################################################
+# TODO: set false for no keypoint baseline
+overlay = True # TODO: set this option accordingly!
+DATASETS = [
+    DatasetEntry(
+        kind="human",
+        path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
+        weight=0.34,
+        overlay=overlay,
+        task = "vertical_pick_place",
+        apply_custom_norm=False,
+        norm_stats_path=None,
+        overlay_both=True, # TODO: the option to overlay both hands is set!
+        both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+    ),
+
+    DatasetEntry(
+        kind="human",
+        path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_1111",
+        weight=0.03,
+        overlay=overlay,
+        task = "vertical_pick_place",
+        apply_custom_norm=False,
+        norm_stats_path=None,
+        overlay_both=True, # TODO: the option to overlay both hands is set!
+        both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+    ),
+
+    DatasetEntry(
+        kind="human",
+        path="/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1104_COPY",
+        weight=0.03,
+        overlay=overlay,
+        task = "vertical_pick_place",
+        apply_custom_norm=False,
+        norm_stats_path=None
+    ),    
+
+    DatasetEntry(
+        kind="robot",
+        path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111",
+        weight=0.3,
+        task ="vertical_pick_place",
+        stride=3,
+        overlay=overlay,
+        mask_wrist=True,
+        apply_custom_norm=False,
+        norm_stats_path = None,
+        ee_to_hand_left_xyz = [0.01, 0.02, -0.035],
+        ee_to_hand_right_xyz = [-0.01, -0.07, 0.00]
+    ),
+
+    # below is sort cotrain data
+    DatasetEntry(
+        kind="robot",
+        path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110",
+        weight=0.15,
+        task ="vertical_pick_place",
+        stride=3,
+        overlay=overlay,
+        mask_wrist=True,
+        apply_custom_norm=False,
+        norm_stats_path = None,
+        ee_to_hand_left_xyz = [0.01, 0.015, -0.05], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+        ee_to_hand_right_xyz = [-0.01, -0.06, 0.015]
+    ),
+
+    DatasetEntry(
+        kind="robot",
+        path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",
+        weight=0.15,
+        task ="vertical_pick_place",
+        stride=3,
+        overlay=overlay,
+        mask_wrist=True,
+        apply_custom_norm=False,
+        norm_stats_path = None,
+        ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+        ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
+        # TODO: add custom offsets here for good measure
+    ),
+]
+
+
+#####################################################
+# NEW COMPOSITION! 10102025
+#####################################################
+
+# overlay = True
+# # # TODO: NOTE: I'm using the same langauge instruction for everything for this task!
+# DATASETS = [
+
+
+# #     # below is composition data
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105",
+#         weight=0.30,
+#         overlay=True,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         overlay_both=True, # TODO: the option to overlay both hands is set!
+#         both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+#     ),
+
+#     # below is box pull data
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_PULL_BOX_1105",
+#         weight=0.27,
+#         task ="vertical_pick_place", # TODO: set correct language instructions across
+#         stride=4, # TODO: NOTE: stride 4 is used for box pull!
+#         overlay=True,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
+#     ),
+
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_PULL_BOX_1105",
+#         weight=0.03,
+#         overlay=True,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         overlay_both=True, # TODO: the option to overlay both hands is set!
+#         both_actions=True, # TODO: this is bimanual action data so return both valid left / right actions!
+#     ),
+
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_PICK_REDCUBE_1107",
+#         weight=0.1,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         # overlay_both=True, # 
+#         # both_actions=True,# 
+#     ),
+
+#     DatasetEntry(
+#         kind="robot",
+#         path= os.path.join(base_pth, "ROBOT_PICK_REDCUBE_1107"),
+#         weight=0.30,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.0, 0.03, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.06, 0.01]
+#     ),
+
+# ]
 
 #####################################################
 # COMPOSITION BASELINE
@@ -413,7 +717,7 @@ base_pth = "/iris/projects/humanoid/dataset/"
 # Block plate sort dataset cotrain REVERSED (green left, yellow right) 11052025
 ######################################################
 # TODO: NOTE: set accordingly, set False for ablation study
-# overlay = False
+# overlay = True
 # DATASETS = [
 #     DatasetEntry(
 #         kind="robot",
@@ -424,7 +728,9 @@ base_pth = "/iris/projects/humanoid/dataset/"
 #         overlay=overlay,
 #         mask_wrist=True,
 #         apply_custom_norm=False,
-#         norm_stats_path = None
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
 #     ),
 #     DatasetEntry(
 #         kind="robot",
@@ -435,7 +741,9 @@ base_pth = "/iris/projects/humanoid/dataset/"
 #         overlay=overlay,
 #         mask_wrist=True,
 #         apply_custom_norm=False,
-#         norm_stats_path = None
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
 #     ),
 #     DatasetEntry(
 #         kind="human",
@@ -446,7 +754,7 @@ base_pth = "/iris/projects/humanoid/dataset/"
 #         apply_custom_norm=False,
 #         norm_stats_path=None
 #     ),
-    
+
 #     DatasetEntry(
 #         kind="human",
 #         path="/iris/projects/humanoid/dataset/HUMAN_SORT_TR_1104_COPY",
@@ -459,7 +767,8 @@ base_pth = "/iris/projects/humanoid/dataset/"
 
 #     DatasetEntry(
 #         kind="human",
-#         path="/iris/projects/humanoid/dataset/HUMAN_SORT_IL_REV_1105",
+#         path="/iris/projects/humanoid/dataset/HUMAN_SORT_IL_REV_1105", # TODO: NOTE: this is the reversed dataset
+#         # path="/iris/projects/humanoid/dataset/HUMAN_SORT_IL_1104_COPY",
 #         weight=0.125,
 #         overlay=overlay,
 #         task = "vertical_pick_place",
@@ -469,7 +778,8 @@ base_pth = "/iris/projects/humanoid/dataset/"
 
 #     DatasetEntry(
 #         kind="human",
-#         path="/iris/projects/humanoid/dataset/HUMAN_SORT_IR_REV_1105",
+#         path="/iris/projects/humanoid/dataset/HUMAN_SORT_IR_REV_1105", #TODO: NOTE: this is the reversed dataset
+#         # path="/iris/projects/humanoid/dataset/HUMAN_SORT_IR_1104_COPY",
 #         weight=0.125,
 #         overlay=overlay,
 #         task = "vertical_pick_place",

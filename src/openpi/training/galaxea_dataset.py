@@ -326,6 +326,9 @@ _T_real_ee_to_hand_left[:3,:3] = _R_y @ _R_z
 _T_real_ee_to_hand_left[:3,3] = [0.01, -0.019, -0.04]
 # TODO: NOTE: below is for new pick place
 # _T_real_ee_to_hand_left[:3,3] = [0.0, 0.03, -0.04]
+# TODO: comment me out ! use below for testing (will be changed constantly)
+_T_real_ee_to_hand_left[:3,3] = [0.01, 0.02, -0.035]
+
 
 # TODO: comment me out!
 # _T_real_ee_to_hand_left[:3,3] = [0.01, 0.015, -0.05]
@@ -344,6 +347,9 @@ T_EE_TO_HAND_R[:3,3] = [-0.01, -0.005, 0.015]
 
 # TODO: comment me out!
 # T_EE_TO_HAND_R[:3,3] = [-0.01, -0.06, 0.015]
+
+# TODO: comment me out! use me for testing!
+# T_EE_TO_HAND_R[:3,3] = [-0.01, -0.07, 0.00]
 
 
 # Simple link groups to draw (right hand); prefixes in URDF are "rl_*"
@@ -499,7 +505,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         )
 
         # TODO: use me only for computig norm stats!
-        # self.episode_dirs = random.sample(self.episode_dirs, 30)
+        # self.episode_dirs = random.sample(self.episode_dirs, 20)
         # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
         # Precompute (episode_len) for each episode by reading its CSV once
@@ -903,10 +909,12 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         csv_path = os.path.join(demo_dir, "ee_hand.csv")
         df = pd.read_csv(csv_path)
 
-        if self.overlay:
+        # TODO: added the option to avoid overlay 50% of the time, make sure this is what you want
+        if self.overlay and (random.random() < 0.5):
             row0 = df.iloc[t0]
             pts_L = self._fk_points_world(row0, "left",  kind="actual")
             pts_R = self._fk_points_world(row0, "right", kind="actual")
+            # this line actually draws skeletons on both hands
             img_bgr = self._project_draw_hands_on_left(img_bgr, pts_L, pts_R)
 
         image = self._resize_norm_rgb(img_bgr)
@@ -1156,7 +1164,8 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 # if __name__ == "__main__":
 #     # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_BLUE_RIGHT_1110"
+#     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_BLUE_RIGHT_1110"
+#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PULL_BOX_1105"
 #     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"

@@ -269,7 +269,7 @@ def transform_dataset_no_normalization(dataset: Dataset, data_config: _config.Da
         [
             *data_config.repack_transforms.inputs,
             *data_config.data_transforms.inputs,\
-            # TODO TODO TODO: WE ARE SKIPPING NORMALIZATION!
+            # TODO: WE ARE SKIPPING NORMALIZATION! (this comment seems to be remnant of trying to do custom normalization)
             # _transforms.Normalize(norm_stats, use_quantiles=data_config.use_quantile_norm),
             *data_config.model_transforms.inputs,
         ],

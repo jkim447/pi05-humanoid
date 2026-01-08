@@ -946,6 +946,11 @@ _CONFIGS = [
         # ema_decay=0.99,
     ),
 
+    #########################################################
+    #########################################################
+    # USE THIS CONFIG
+    #########################################################
+    #########################################################
     TrainConfig(
         # Give the experiment a unique handle.
         name="pi05_galaxea_egodex_abs_joints",
@@ -972,9 +977,13 @@ _CONFIGS = [
             ),
         ),
         # Initialize from the Pi-0 base checkpoint (same as pi0_libero).
+        # TODO: UNDO ME TO TRAIN FROM THE BASE CHECKPOIINT
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_base/params" 
         ),
+
+        # TODO: COMMET ME OUT! use me only if training from scratch
+        # weight_loader = weight_loaders.PaliGemmaWeightLoader(),
 
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=1000, # TODO: change as needed
@@ -986,11 +995,11 @@ _CONFIGS = [
         # ema_decay=0.999, # default is 0.99 if unspecified
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
-        num_train_steps=300_000, # TODO: change as needed
-        batch_size=256, # TODO: change as needed
-        num_workers=12,
-        # save_interval = 100,
-        # keep_period = 500,
+        num_train_steps=5000, # TODO: change as needed
+        batch_size=64, # TODO: change as needed
+        num_workers=2,
+        # save_interval = 500, # TODO undo me 
+        # keep_period = 10000, # TODO: undo me
 
         # batch_size=32, # TODO: change as needed
         # num_workers=0
@@ -1094,8 +1103,8 @@ _CONFIGS = [
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
         num_train_steps=300_000, # TODO: change as needed
-        batch_size=256, # TODO: change as needed
-        num_workers=12
+        batch_size=128, # TODO: change as needed
+        num_workers=6
 
         # batch_size=32, # TODO: change as needed
         # num_workers=0

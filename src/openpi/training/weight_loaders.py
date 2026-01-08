@@ -50,6 +50,12 @@ class CheckpointWeightLoader(WeightLoader):
     def load(self, params: at.Params) -> at.Params:
         # We are loading np.ndarray and relying on the training code to properly convert and shard the params.
         loaded_params = _model.restore_params(download.maybe_download(self.params_path), restore_type=np.ndarray)
+        # print("[CheckpointWeightLoader] Loaded parameters:")
+        # flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep="/")
+        # for k in sorted(flat_loaded.keys()):
+        #     v = flat_loaded[k]
+        #     print(f"  {k}: shape={getattr(v, 'shape', None)}, dtype={getattr(v, 'dtype', None)}")
+        # assert False
         # Add all missing LoRA weights.
         return _merge_params(loaded_params, params, missing_regex=".*lora.*")
 

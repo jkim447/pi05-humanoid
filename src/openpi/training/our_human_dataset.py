@@ -198,7 +198,7 @@ class HumanDatasetKeypointsJoints(Dataset):
         )
 
         # TODO: use me only when computing norm stats!
-        # num_episodes_to_keep = 23
+        # num_episodes_to_keep = 20
         # if len(episode_dirs) > num_episodes_to_keep:
         #     episode_dirs = random.sample(episode_dirs, num_episodes_to_keep)
 
@@ -513,7 +513,8 @@ class HumanDatasetKeypointsJoints(Dataset):
         actions_out = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*chunk, 29)
 
         # --- visualization (optional) & final image as uint8 ---
-        if self.overlay:
+        # TODO: I've added the option to avoid overlay 50% of the time, make sure this is what you want
+        if self.overlay and (random.random() < 0.5):
             vis_raw = bgr_raw.copy()
             # Right hand (existing)
             kps_r_cam = self._row_keypoints_cam(df.iloc[t0], hand="right")
@@ -584,14 +585,14 @@ class HumanDatasetKeypointsJoints(Dataset):
 #     ds = HumanDatasetKeypointsJoints(
 #         # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
 #         # dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105",
-#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_PICK_PEPPER_1107",
+#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
 #         chunk_size=20,
 #         stride=2,
 #         img_height=224,
 #         img_width=224,
 #         overlay=True,   # draws wrist + 5 tips on the resized left image
 #         custom_instruction="vertical_pick_place",
-#         # overlay_both=True,  # do not overlay left hand
+#         overlay_both=True,  # do not overlay left hand
 #         # both_actions=True,  # include left-hand actions as well # TODO: change this if needed
 #     )
 
@@ -624,7 +625,7 @@ class HumanDatasetKeypointsJoints(Dataset):
 #         print("   state[:8]:", s_np[:8])
 #         print("   actions[1, :8] (first right-hand token):", a_np[2, :8])
 
-#         if i >= 10:  # first 5 samples only
+#         if i >= 30:  # first 5 samples only
 #             break
 
 # if __name__ == "__main__":
