@@ -204,7 +204,7 @@ def create_torch_dataset(
             ds = GalaxeaDatasetKeypointsJoints(
                 task=entry.task,
                 dataset_dir=entry.path,
-                chunk_size=action_horizon // 2,
+                chunk_size=action_horizon, # TODO: no longer // 2 becuse no interleave actions
                 stride=entry.stride,
                 overlay=entry.overlay,
                 mask_wrist=entry.mask_wrist,
@@ -216,7 +216,7 @@ def create_torch_dataset(
         elif entry.kind == "human":
             ds = HumanDatasetKeypointsJoints(
                 dataset_dir=entry.path,
-                chunk_size=action_horizon // 2,
+                chunk_size=action_horizon, # TODO: no longer // 2 because no interleave action
                 stride=1,
                 img_height=224,
                 img_width=224,

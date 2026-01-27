@@ -272,7 +272,10 @@ base_pth = "/iris/projects/humanoid/dataset/"
 # ]
 
 #####################################################
-# Composition fade away overlay! 01052026 USE ME
+# Composition fade away overlay! 01052026 USE ME 
+# there's actually on difference in the code itself comparaed
+# to the composition config above. so this is a repeat of the
+# above config
 #####################################################
 # TODO: set false for no keypoint baseline
 overlay = True # TODO: set this option accordingly!
@@ -313,7 +316,7 @@ DATASETS = [
 
     DatasetEntry(
         kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111",
+        path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111", # done
         weight=0.3,
         task ="vertical_pick_place",
         stride=3,
@@ -328,7 +331,7 @@ DATASETS = [
     # below is sort cotrain data
     DatasetEntry(
         kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110",
+        path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110", # done
         weight=0.15,
         task ="vertical_pick_place",
         stride=3,
@@ -342,7 +345,7 @@ DATASETS = [
 
     DatasetEntry(
         kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",
+        path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104", # running in third terminal (hgx-2)
         weight=0.15,
         task ="vertical_pick_place",
         stride=3,

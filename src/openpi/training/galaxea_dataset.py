@@ -450,8 +450,6 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         if self.apply_custom_norm and norm_stats_path is not None and os.path.exists(norm_stats_path):
             self._norm = normalize.load(os.path.dirname(norm_stats_path))
         
-
-
         if not isinstance(task, str) or task.strip() == "":
             raise ValueError("`task` must be a non-empty string.")
         self.task = task
@@ -910,7 +908,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         df = pd.read_csv(csv_path)
 
         # TODO: added the option to avoid overlay 50% of the time, make sure this is what you want
-        if self.overlay and (random.random() < 0.5):
+        if self.overlay: #and (random.random() < 0.5):
             row0 = df.iloc[t0]
             pts_L = self._fk_points_world(row0, "left",  kind="actual")
             pts_R = self._fk_points_world(row0, "right", kind="actual")
@@ -960,11 +958,19 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
                 aR = np.concatenate([dposR, doriR, jabsR], axis=0)  # (29,)
 
-                tokens.extend([aL, aR])
-                action_mask.extend([1.0, 1.0])
+                # original interleaving actions
+                # tokens.extend([aL, aR])
+                # action_mask.extend([1.0, 1.0])
+                # CHANGE STARTS HERE
+                tokens.append(np.concatenate([aL, aR], axis=0)) # Shape (58,)
+                action_mask.append(1.0) # Only one mask value per step
             else:
-                tokens.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
-                action_mask.extend([0.0, 0.0])
+                # for original interleaving actions:
+                # tokens.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+                # action_mask.extend([0.0, 0.0])
+                # CHANGE STARTS HERE
+                tokens.append(np.zeros(58, dtype=np.float32)) # Zero padding is now 58
+                action_mask.append(0.0)
 
         actions = np.stack(tokens, axis=0).astype(np.float32)  # (2*chunk_size, 29)
 

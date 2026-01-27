@@ -507,14 +507,20 @@ class HumanDatasetKeypointsJoints(Dataset):
                 else:
                     left = np.zeros(29, np.float32)
 
-                actions_lr.extend([left, right])
+                # original interleave
+                # actions_lr.extend([left, right])
+                # non-interleaved version
+                actions_lr.append(np.concatenate([left, right], axis=0))
             else:
-                actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+                # original interleave
+                # actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+                # non-interleaved actions
+                actions_lr.append(np.zeros(58, dtype=np.float32))
         actions_out = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*chunk, 29)
 
         # --- visualization (optional) & final image as uint8 ---
         # TODO: I've added the option to avoid overlay 50% of the time, make sure this is what you want
-        if self.overlay and (random.random() < 0.5):
+        if self.overlay: #and (random.random() < 0.5):
             vis_raw = bgr_raw.copy()
             # Right hand (existing)
             kps_r_cam = self._row_keypoints_cam(df.iloc[t0], hand="right")
