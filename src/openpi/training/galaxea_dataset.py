@@ -896,6 +896,62 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
         return actions
 
+    # Add these as class-level constants or inside __init__
+    def _init_kinematic_constants(self):
+        # Rotation matrices for hand offsets
+        ry = R.from_euler('y', np.pi).as_matrix()
+        rz = R.from_euler('z', -np.pi/2).as_matrix()
+        rz_right = R.from_euler('z', np.pi).as_matrix()
+        
+        # Left Hand Offset
+        self.T_EE_HAND_L = np.eye(4)
+        self.T_EE_HAND_L[:3, :3] = ry @ rz
+        self.T_EE_HAND_L[:3, 3] = [0.01, 0.02, -0.07]
+        
+        # Right Hand Offset
+        self.T_EE_HAND_R = np.eye(4)
+        self.T_EE_HAND_R[:3, :3] = ry @ rz @ rz_right
+        self.T_EE_HAND_R[:3, 3] = [-0.01, -0.03, -0.07]
+
+    def _get_scaled_K(self, out_w, out_h):
+        """Scales the 1280x720 K_LEFT matrix to the current raw image size."""
+        # Original calibration was 1280x720
+        scale_x = float(out_w) / 1280.0
+        scale_y = float(out_h) / 720.0
+        
+        K = K_LEFT.copy()
+        K[0, 0] *= scale_x  # fx
+        K[0, 2] *= scale_x  # cx
+        K[1, 1] *= scale_y  # fy
+        K[1, 2] *= scale_y  # cy
+        return K
+
+    def _get_kinematic_line_points(self, row, side, K_scaled):
+        # 1. Get EE Pose from CSV row
+        p_ee = np.array([row[f"{side}_pos_x"], row[f"{side}_pos_y"], row[f"{side}_pos_z"]])
+        q_ee = [row[f"{side}_ori_x"], row[f"{side}_ori_y"], row[f"{side}_ori_z"], row[f"{side}_ori_w"]]
+        
+        T_world_ee = np.eye(4)
+        T_world_ee[:3, :3] = R.from_quat(q_ee).as_matrix()
+        T_world_ee[:3, 3] = p_ee
+        
+        # 2. Apply EE -> Hand offset
+        T_offset = self.T_EE_HAND_L if side == "left" else self.T_EE_HAND_R
+        T_world_hand = T_world_ee @ T_offset
+        
+        # 3. Define Points: Wrist (P1) and Elbow direction (P2)
+        p1_world = T_world_hand[:3, 3]
+        p2_world = p1_world + (T_world_hand[:3, :3] @ np.array([0, 0, -0.2]))
+        
+        # 4. Project both points
+        pts_uv = []
+        for p_world in [p1_world, p2_world]:
+            p_cam = T_BASE_TO_CAM_LEFT @ np.append(p_world, 1.0)
+            if p_cam[2] <= 0.05: return None
+            uv = K_scaled @ (p_cam[:3] / p_cam[2])
+            pts_uv.append((int(uv[0]), int(uv[1])))
+        return pts_uv
+
 
     # CHANGED: __getitem__ tail portion
     def __getitem__(self, index):
@@ -910,12 +966,48 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         df = pd.read_csv(csv_path)
 
         # TODO: added the option to avoid overlay 50% of the time, make sure this is what you want
-        if self.overlay and (random.random() < 0.5):
+        if self.overlay: # and (random.random() < 0.5):
             row0 = df.iloc[t0]
+
+            ##########################################
+            # TODO: uncomment me for original ego-pi code            
+            ##########################################
             pts_L = self._fk_points_world(row0, "left",  kind="actual")
             pts_R = self._fk_points_world(row0, "right", kind="actual")
             # this line actually draws skeletons on both hands
             img_bgr = self._project_draw_hands_on_left(img_bgr, pts_L, pts_R)
+            ##########################################
+            ##########################################
+
+
+            ##########################################
+            # TODO: use me for masking baseline
+            ##########################################
+            # 1. Load raw image
+            # raw_h, raw_w = img_bgr.shape[:2]
+            # mask_path = os.path.join(demo_dir, "segmentation_mask", f"{t0:06d}.jpg")
+            # if os.path.exists(mask_path):
+            #     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            #     if mask is not None:
+            #         # Resize mask to match image if necessary
+            #         if mask.shape[:2] != img_bgr.shape[:2]:
+            #             mask = cv2.resize(mask, (raw_w, raw_h))
+            #         img_bgr[mask > 128] = [0, 0, 0] # Solid Black
+                    
+            # # Draw Red Kinematic Lines
+            # # Ensure constants are initialized (call this in __init__ instead for speed)
+            # self._init_kinematic_constants()
+            # # Scale K matrix for the current raw image resolution (e.g. 640x360)
+            # K_scaled = self._get_scaled_K(raw_w, raw_h)
+
+            # for side in ["left", "right"]:
+            #     pts = self._get_kinematic_line_points(row0, side, K_scaled)
+            #     if pts:
+            #         p1, p2 = pts
+            #         # Red line (BGR: 0, 0, 255)
+            #         cv2.line(img_bgr, p1, p2, (0, 0, 255), 24, cv2.LINE_AA)
+            ##########################################
+            ##########################################
 
         image = self._resize_norm_rgb(img_bgr)
         wrist_image_left  = self._resize_norm_rgb(img_bgr_left_wrist)[::-1, ::-1, :]
@@ -1165,7 +1257,9 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #     # dataset_root = "/iris/projects/humanoid/dataset/DEMO_QUEST_CONTROLLER/QUEST_ASSEMBLE_ROBOT"  # change as needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_BLUE_RIGHT_1110"
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111"
+#     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111"
+#     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110"
+#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PULL_BOX_1105"
 #     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"

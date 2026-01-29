@@ -792,11 +792,6 @@ DATASETS = [
 # Block plate sort dataset cotrain (yellow left, green right) 11052025
 ######################################################
 # DATASETS = [
-#     # DatasetEntry(
-#     #     kind="egodex",
-#     #     path="/iris/projects/humanoid/dataset/ego_dex",
-#     #     weight=0.0,  # no training yet
-#     # ),
 #     DatasetEntry(
 #         kind="robot",
 #         path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",

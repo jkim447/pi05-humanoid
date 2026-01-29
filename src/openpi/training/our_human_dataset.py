@@ -439,6 +439,30 @@ class HumanDatasetKeypointsJoints(Dataset):
 
         return actions
 
+    def _get_human_red_line(self, row, hand, K_scaled):
+        # 1. Get Wrist Position & Orientation in Camera Frame
+        # You already have a helper for this!
+        p_wrist_cam, rot6 = self._row_wrist_cam_pos6(row, hand=hand)
+        
+        # Recover rotation matrix from rot6 (first two columns)
+        # Or re-calculate from quaternion directly for precision
+        wrist_quat = self.wrist_quat if hand == "right" else self.left_wrist_quat
+        R_base = R.from_quat([row[c] for c in wrist_quat]).as_matrix()
+        R_cam  = self._rot_base_to_cam(R_base) # (3, 3)
+
+        # 2. Define Line: Wrist -> Elbow
+        # Assumption: Forearm is along -Z in local wrist frame (MANO convention)
+        # Adjust this vector if the line points the wrong way (e.g. try [0,0,0.2])
+        elbow_offset_local = np.array([0.0, 0.0, 0.25], dtype=np.float32) # 25cm back
+        p_elbow_cam = p_wrist_cam + (R_cam @ elbow_offset_local)
+
+        # 3. Project to UV
+        # Use scaled projection helper you already have
+        uv_wrist = self._project(K_scaled, p_wrist_cam)
+        uv_elbow = self._project(K_scaled, p_elbow_cam)
+        
+        return uv_wrist, uv_elbow
+
 
     def __getitem__(self, index):
         ep_id, t0 = self.index[index]
@@ -512,9 +536,12 @@ class HumanDatasetKeypointsJoints(Dataset):
                 actions_lr.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
         actions_out = np.stack(actions_lr, axis=0).astype(np.float32)  # (2*chunk, 29)
 
+        ################################################################
+        # TODO: uncomment me for the original code
+        ################################################################
         # --- visualization (optional) & final image as uint8 ---
         # TODO: I've added the option to avoid overlay 50% of the time, make sure this is what you want
-        if self.overlay and (random.random() < 0.5):
+        if self.overlay: #and (random.random() < 0.5):
             vis_raw = bgr_raw.copy()
             # Right hand (existing)
             kps_r_cam = self._row_keypoints_cam(df.iloc[t0], hand="right")
@@ -528,7 +555,53 @@ class HumanDatasetKeypointsJoints(Dataset):
         
         else:
             img = self._to_rgb_uint8_and_resize(bgr_raw, self.img_w, self.img_h)
+        #########################################################
+        #########################################################
 
+        #########################################################
+        # TODO: use me for the overlay baseline
+        #########################################################
+        # if self.overlay:
+        #     # A. Black out segmented regions (if mask exists)
+        #     # Assuming masks are named like 000000.jpg matching frame index
+        #     mask_path = os.path.join(demo_dir, "segmentation_mask", f"{t0:06d}.jpg")
+
+        #     if os.path.exists(mask_path):
+        #         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        #         if mask is not None:
+        #             # Resize to match raw image if needed
+        #             if mask.shape[:2] != (raw_h, raw_w):
+        #                 mask = cv2.resize(mask, (raw_w, raw_h))
+        #             # Apply blackout
+        #             bgr_raw[mask > 128] = [0, 0, 0]
+
+        #     # B. Draw Red Kinematic Lines (Human Arms)
+        #     # Scale intrinsics for the raw image size
+        #     K_img = self._scaled_K_for_image(raw_w, raw_h)
+            
+        #     # Determine which hands to draw
+        #     hands_to_draw = ["right"]
+        #     if self.overlay_both: # If dataset is configured for both
+        #         hands_to_draw.append("left")
+            
+        #     for hand in hands_to_draw:
+        #         # Check if data exists for this hand (simple NaN check on first column)
+        #         col_check = self.wrist_xyz[0] if hand == "right" else self.left_wrist_xyz[0]
+        #         if pd.isna(row0[col_check]): 
+        #             continue
+
+        #         # Calculate and Draw
+        #         p1, p2 = self._get_human_red_line(row0, hand, K_img)
+        #         cv2.line(bgr_raw, p1, p2, (0, 0, 255), 24, cv2.LINE_AA)
+        #         # Optional: Green dot at wrist to verify start point
+        #         # cv2.circle(bgr_raw, p1, 6, (0, 255, 0), -1)
+
+        #     img = self._to_rgb_uint8_and_resize(bgr_raw, self.img_w, self.img_h)
+        # else:
+        #     img = self._to_rgb_uint8_and_resize(bgr_raw, self.img_w, self.img_h)
+        #########################################################
+        #########################################################
+        
 
         H, W, C = img.shape
         zeros_img = np.zeros_like(img, dtype=np.uint8)
@@ -573,6 +646,7 @@ class HumanDatasetKeypointsJoints(Dataset):
 #         img = rgb_tensor_or_array
 #     # img = (img.clip(0, 1) * 255.0).astype("uint8")
 #     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+#     # print(bgr.shape, bgr.dtype, bgr.min(), bgr.max())
 #     cv2.imwrite(out_path, bgr)
 
 
@@ -612,6 +686,9 @@ class HumanDatasetKeypointsJoints(Dataset):
 #         actions = batch["actions"][0]    # (2*chunk, 44)
 
 #         out_img = os.path.join(out_dir, f"sample_{i:02d}.jpg")
+#         # print(image.shape)
+#         # print(image.max(), image.min())
+#         # assert False
 #         save_rgb_image(image, out_img)
 
 #         # quick shape + small value checks
