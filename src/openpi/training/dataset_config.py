@@ -8,6 +8,7 @@ class DatasetEntry(NamedTuple):
     weight: float              # target sampling probability
     apply_custom_norm: bool
     norm_stats_path: str  # Path to normalization statistics file
+    robot_hand_type: str | None = None # "inspire_hand" or "tesollo_hand"
     stride: int = 2
     task: str = "vertical_pick_place"
     overlay: bool = True
@@ -16,6 +17,7 @@ class DatasetEntry(NamedTuple):
     both_actions: bool = False # option for our_human_dataset to return valid actions for both hands. Also exists since most data is right hand only
     ee_to_hand_left_xyz: tuple[float, float, float] | None = None
     ee_to_hand_right_xyz: tuple[float, float, float] | None = None
+    rotate_wrist_img: bool = False # only needed for trash sorting data that using wrist images
 
 
 base_pth = "/iris/projects/humanoid/dataset/"
@@ -27,6 +29,34 @@ base_pth = "/iris/projects/humanoid/dataset/"
 # appropriately set overlay_both and both_actions to True for those
 # human dataset! SUPER IMPORTANT
 
+###############################################################################
+###############################################################################
+###############################################################################
+# Trash sorting! 02042026
+###############################################################################
+###############################################################################
+###############################################################################
+# robot data only baseline
+overlay = False # TODO: set this option accordingly!
+# TODO: set accordingly
+rotate_wrist_img = True # only for trash sorting data, using inspire hands
+DATASETS = [
+    DatasetEntry(
+        kind="robot",
+        path="/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING",
+        weight=1.0,
+        task ="bus_the_table",
+        stride=3,
+        overlay=overlay,
+        mask_wrist=True,
+        apply_custom_norm=False,
+        norm_stats_path = None,
+        ee_to_hand_left_xyz = [0.01, 0.02, -0.035],
+        ee_to_hand_right_xyz = [-0.01, -0.07, 0.00],
+        rotate_wrist_img = rotate_wrist_img,
+        robot_hand_type = "inspire_hand"
+    ),
+]
 
 ###############################################################################
 ###############################################################################
@@ -275,86 +305,86 @@ base_pth = "/iris/projects/humanoid/dataset/"
 # Composition fade away overlay! 01052026 USE ME
 #####################################################
 # TODO: set false for no keypoint baseline
-overlay = True # TODO: set this option accordingly!
-DATASETS = [
-    DatasetEntry(
-        kind="human",
-        path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
-        weight=0.34,
-        overlay=overlay,
-        task = "vertical_pick_place",
-        apply_custom_norm=False,
-        norm_stats_path=None,
-        overlay_both=True, # TODO: the option to overlay both hands is set!
-        both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
-    ),
+# overlay = True # TODO: set this option accordingly!
+# DATASETS = [
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
+#         weight=0.34,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         overlay_both=True, # TODO: the option to overlay both hands is set!
+#         both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+#     ),
 
-    DatasetEntry(
-        kind="human",
-        path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_1111",
-        weight=0.03,
-        overlay=overlay,
-        task = "vertical_pick_place",
-        apply_custom_norm=False,
-        norm_stats_path=None,
-        overlay_both=True, # TODO: the option to overlay both hands is set!
-        both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
-    ),
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_1111",
+#         weight=0.03,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None,
+#         overlay_both=True, # TODO: the option to overlay both hands is set!
+#         both_actions=True,# TODO: this is bimanual action data so return both valid left / right actions!
+#     ),
 
-    DatasetEntry(
-        kind="human",
-        path="/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1104_COPY",
-        weight=0.03,
-        overlay=overlay,
-        task = "vertical_pick_place",
-        apply_custom_norm=False,
-        norm_stats_path=None
-    ),    
+#     DatasetEntry(
+#         kind="human",
+#         path="/iris/projects/humanoid/dataset/HUMAN_SORT_TL_1104_COPY",
+#         weight=0.03,
+#         overlay=overlay,
+#         task = "vertical_pick_place",
+#         apply_custom_norm=False,
+#         norm_stats_path=None
+#     ),    
 
-    DatasetEntry(
-        kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111",
-        weight=0.3,
-        task ="vertical_pick_place",
-        stride=3,
-        overlay=overlay,
-        mask_wrist=True,
-        apply_custom_norm=False,
-        norm_stats_path = None,
-        ee_to_hand_left_xyz = [0.01, 0.02, -0.035],
-        ee_to_hand_right_xyz = [-0.01, -0.07, 0.00]
-    ),
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111",
+#         weight=0.3,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, 0.02, -0.035],
+#         ee_to_hand_right_xyz = [-0.01, -0.07, 0.00]
+#     ),
 
-    # below is sort cotrain data
-    DatasetEntry(
-        kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110",
-        weight=0.15,
-        task ="vertical_pick_place",
-        stride=3,
-        overlay=overlay,
-        mask_wrist=True,
-        apply_custom_norm=False,
-        norm_stats_path = None,
-        ee_to_hand_left_xyz = [0.01, 0.015, -0.05], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
-        ee_to_hand_right_xyz = [-0.01, -0.06, 0.015]
-    ),
+#     # below is sort cotrain data
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110",
+#         weight=0.15,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, 0.015, -0.05], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.06, 0.015]
+#     ),
 
-    DatasetEntry(
-        kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",
-        weight=0.15,
-        task ="vertical_pick_place",
-        stride=3,
-        overlay=overlay,
-        mask_wrist=True,
-        apply_custom_norm=False,
-        norm_stats_path = None,
-        ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
-        ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
-        # TODO: add custom offsets here for good measure
-    ),
-]
+#     DatasetEntry(
+#         kind="robot",
+#         path="/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104",
+#         weight=0.15,
+#         task ="vertical_pick_place",
+#         stride=3,
+#         overlay=overlay,
+#         mask_wrist=True,
+#         apply_custom_norm=False,
+#         norm_stats_path = None,
+#         ee_to_hand_left_xyz = [0.01, -0.019, -0.04], # TODO: this is added for the new composition data collected 1110... instead of collect human data we collected robot data
+#         ee_to_hand_right_xyz = [-0.01, -0.005, 0.015]
+#         # TODO: add custom offsets here for good measure
+#     ),
+# ]
 
 
 #####################################################

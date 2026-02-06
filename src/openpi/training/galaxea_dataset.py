@@ -421,7 +421,7 @@ TIP_LINKS_L = _tip_links("ll")
 TIP_LINKS_R = _tip_links("rl")
 
 class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
-    def __init__(self, task: str, dataset_dir, chunk_size, stride=3, overlay=False,
+    def __init__(self, task: str, dataset_dir, chunk_size, robot_hand_type, stride=3, overlay=False,
                 #  hand_mode: str = "right",  # "left", "right", or "both"
                 urdf_left_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_left.urdf",
                 urdf_right_path="/iris/projects/humanoid/act/dg_description/urdf/dg5f_right.urdf",
@@ -429,7 +429,9 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
                 apply_custom_norm = False, # TODO: we have option to specify custom norm
                 norm_stats_path: str = None, # TODO: and the path for the custom norm params, MUST be specified if applying custom norm
                 ee_to_hand_left_xyz: tuple[float,float,float] | None = None,
-                ee_to_hand_right_xyz: tuple[float,float,float] | None = None): 
+                ee_to_hand_right_xyz: tuple[float,float,float] | None = None,
+                rotate_wrist_img: bool = False, # TODO: added option to rotate wrist img, only set True for trash sorting inspire hands in the dataset config
+                ): # or tesollo hand 
         super(GalaxeaDatasetKeypointsJoints).__init__()
         self.dataset_dir = dataset_dir
         self.chunk_size = chunk_size
@@ -442,6 +444,27 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         self._norm = None  # ← add this line
         self.T_EE_TO_HAND_L = T_EE_TO_HAND_L.copy()
         self.T_EE_TO_HAND_R = T_EE_TO_HAND_R.copy()
+        self.rotate_wrist_img = rotate_wrist_img
+        self.robot_hand_type = robot_hand_type
+
+
+        if self.robot_hand_type == "inspire_hand":
+            self.hand_joint_count = 6
+            self.action_dim = 17 # 3 (pos) + 6 (ori) + 6 (hand) + 2 (torso)
+            self.left_hand_cols = [f"left_hand_{i}" for i in range(6)]
+            self.right_hand_cols = [f"right_hand_{i}" for i in range(6)]
+            self.left_actual_hand_cols = [f"left_actual_hand_{i}" for i in range(6)]
+            self.right_actual_hand_cols = [f"right_actual_hand_{i}" for i in range(6)]
+            self.torso_cols = ["torso_joint_2", "torso_joint_3"]
+        else:
+            # Default Tesollo Hand Logic
+            self.hand_joint_count = 20
+            self.action_dim = 29 # 3 + 6 + 20
+            self.left_hand_cols = [f"left_hand_{i}" for i in range(20)]
+            self.right_hand_cols = [f"right_hand_{i}" for i in range(20)]
+            self.left_actual_hand_cols = [f"left_actual_hand_{i}" for i in range(20)]
+            self.right_actual_hand_cols = [f"right_actual_hand_{i}" for i in range(20)]
+
         if ee_to_hand_left_xyz is not None:
             self.T_EE_TO_HAND_L[:3, 3] = np.asarray(ee_to_hand_left_xyz, dtype=float)
         if ee_to_hand_right_xyz is not None:
@@ -449,19 +472,12 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
         if self.apply_custom_norm and norm_stats_path is not None and os.path.exists(norm_stats_path):
             self._norm = normalize.load(os.path.dirname(norm_stats_path))
-        
 
 
         if not isinstance(task, str) or task.strip() == "":
             raise ValueError("`task` must be a non-empty string.")
         self.task = task
         # self.hand_mode = hand_mode  # NEW
-
-        # columns
-        self.left_hand_cols  = [f"left_hand_{i}"  for i in range(20)] # commanded joint positions
-        self.right_hand_cols = [f"right_hand_{i}" for i in range(20)]
-        self.left_actual_hand_cols  = [f"left_actual_hand_{i}"  for i in range(20)] # true state of the hand
-        self.right_actual_hand_cols = [f"right_actual_hand_{i}" for i in range(20)]
 
         self.action_camera = "left"
 
@@ -505,8 +521,8 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         )
 
         # TODO: use me only for computig norm stats!
-        # self.episode_dirs = random.sample(self.episode_dirs, 20)
-        # print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
+        self.episode_dirs = random.sample(self.episode_dirs, 75)
+        print("Found episode dirs:", self.episode_dirs, len(self.episode_dirs))
 
         # Precompute (episode_len) for each episode by reading its CSV once
         self.episodes = []  # list of (demo_dir, episode_len)
@@ -962,6 +978,12 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
         img_bgr = self._load_img_raw_bgr(demo_dir, t0, cam_name="left")
         img_bgr_left_wrist  = self._load_img_raw_bgr(demo_dir, t0, cam_name="left_wrist")
         img_bgr_right_wrist = self._load_img_raw_bgr(demo_dir, t0, cam_name="right_wrist")
+        if self.rotate_wrist_img:
+            # TODO: only right wrist image is rotated, due to cameras being mounted incorrectly (data collection anomaly)
+            # code is a bit dirty unfortunately, note that below, there is another image rotation operation
+            # img_bgr_left_wrist = cv2.rotate(img_bgr_left_wrist, cv2.ROTATE_180)
+            img_bgr_right_wrist = cv2.rotate(img_bgr_right_wrist, cv2.ROTATE_180)
+
         csv_path = os.path.join(demo_dir, "ee_hand.csv")
         df = pd.read_csv(csv_path)
 
@@ -1010,6 +1032,7 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
             ##########################################
 
         image = self._resize_norm_rgb(img_bgr)
+        # TODO: note that only left image here is being rotated
         wrist_image_left  = self._resize_norm_rgb(img_bgr_left_wrist)[::-1, ::-1, :]
         wrist_image_right = self._resize_norm_rgb(img_bgr_right_wrist)
 
@@ -1037,9 +1060,14 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
                 # left joints: commanded(t) − actual(t0)
                 cmdL   = self._joints20_from_row(row, "left", kind="desired")   # left_actual_hand_*
-                jabsL  = (cmdL).astype(np.float32)
+                if self.robot_hand_type == "inspire_hand":
+                    # Retrieve torso joints and combine with first 6 hand joints
+                    torso = self._read_joint_array(row, self.torso_cols)
+                    jabsL = np.concatenate([cmdL[:6], torso]).astype(np.float32)
+                else:
+                    jabsL = cmdL.astype(np.float32)
 
-                aL = np.concatenate([dposL, doriL, jabsL], axis=0)  # (29,)
+                aL = np.concatenate([dposL, doriL, jabsL], axis=0)
 
                 # right wrist relative-to-t0
                 pR, oR = self._row_wrist_pose6d_in_left_cam(row, "right")
@@ -1048,30 +1076,48 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 
                 # right joints: commanded(t) − actual(t0)
                 cmdR   = self._joints20_from_row(row, "right", kind="desired")  # right_actual_hand_*
-                jabsR  = (cmdR).astype(np.float32)
+                # jabsR  = (cmdR).astype(np.float32)
+                if self.robot_hand_type == "inspire_hand":
+                    # Reuse the same torso joints but combine with right hand's first 6
+                    torso = self._read_joint_array(row, self.torso_cols)
+                    jabsR = np.concatenate([cmdR[:6], torso]).astype(np.float32)
+                else:
+                    jabsR = cmdR.astype(np.float32)
 
                 aR = np.concatenate([dposR, doriR, jabsR], axis=0)  # (29,)
 
                 tokens.extend([aL, aR])
                 action_mask.extend([1.0, 1.0])
             else:
-                tokens.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+                # tokens.extend([np.zeros(29, np.float32), np.zeros(29, np.float32)])
+                tokens.extend([np.zeros(self.action_dim, np.float32), np.zeros(self.action_dim, np.float32)])
                 action_mask.extend([0.0, 0.0])
 
         actions = np.stack(tokens, axis=0).astype(np.float32)  # (2*chunk_size, 29)
 
-        # ---------- state (32 dims) ----------
-        # [pL0(3), oL0(6), pR0(3), oR0(6), left_hand_1..7, right_hand_1..7]
-        def _cmd7(row, side: str):
-            cols = ([f"left_actual_hand_{i}"  for i in range(1, 8)]
-                    if side == "left" else
-                    [f"right_actual_hand_{i}" for i in range(1, 8)])
-            return self._read_joint_array(row, cols)  # (7,)
+        if self.robot_hand_type == "inspire_hand":
+            # 6 joints per hand
+            cmdL = self._read_joint_array(row0, self.left_actual_hand_cols)
+            cmdR = self._read_joint_array(row0, self.right_actual_hand_cols)
+            torso = self._read_joint_array(row0, self.torso_cols)
+            # Total: 3+6 + 3+6 + 6 + 6 + 2 = 32 dims
+            # self.left_actul
+            # print(cmdL.shape, cmdR.shape, torso.shape)
+            # assert False
+            state = np.concatenate([pL0, oL0, pR0, oR0, cmdL, cmdR, torso], axis=0).astype(np.float32)
+        else:
+            # ---------- state (32 dims) ----------
+            # [pL0(3), oL0(6), pR0(3), oR0(6), left_hand_1..7, right_hand_1..7]
+            def _cmd7(row, side: str):
+                cols = ([f"left_actual_hand_{i}"  for i in range(1, 8)]
+                        if side == "left" else
+                        [f"right_actual_hand_{i}" for i in range(1, 8)])
+                return self._read_joint_array(row, cols)  # (7,)
 
-        cmd7L = _cmd7(row0, "left")
-        cmd7R = _cmd7(row0, "right")
+            cmd7L = _cmd7(row0, "left")
+            cmd7R = _cmd7(row0, "right")
 
-        state = np.concatenate([pL0, oL0, pR0, oR0, cmd7L, cmd7R], axis=0).astype(np.float32)  # (32,)
+            state = np.concatenate([pL0, oL0, pR0, oR0, cmd7L, cmd7R], axis=0).astype(np.float32)  # (32,)
 
         # TODO: now I'm dropping out wrist cameras!
         WRIST_DROPOUT = 0.35
@@ -1259,17 +1305,19 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_BLUE_RIGHT_1110"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_OPEN_BOX_1111"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_RED_LEFT_1110"
-#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_SORT_TL_1104"
+#     dataset_root = "/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING"
 #     # dataset_root = "/iris/projects/humanoid/dataset/ROBOT_PULL_BOX_1105"
 #     # dataset_root = "/iris/projects/humanoid/tesollo_dataset/robot_data_0903/red_cube_inbox"  # change if needed
 #     # dataset_root = "/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT"
 
 #     ds = GalaxeaDatasetKeypointsJoints(
 #         dataset_dir=dataset_root,
-#         chunk_size=8,
+#         chunk_size=25,
 #         stride=3,
 #         overlay=True,   # turn on drawing
-#         task="vertical_pick_place"
+#         task="vertical_pick_place",
+#         robot_hand_type = "inspire_hand",
+#         rotate_wrist_img = True # TODO: change as needed
 #         # hand_mode="both",  # "left" | "right" | "both"
 #     )
 
@@ -1288,10 +1336,14 @@ class GalaxeaDatasetKeypointsJoints(torch.utils.data.Dataset):
 #         actions = batch["actions"][0].numpy()
 #         task    = batch["task"][0]
 
+#         print("state_shape", state.shape)
+#         print("actions_shape", actions.shape)
+#         print("task", task)
+
 #         # save individually
 #         save_rgb01(os.path.join(out_dir, f"sample_{i:02d}.png"),           img_main)
-#         # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_left.png"),  img_wl)
-#         # save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_right.png"), img_wr)
+#         save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_left.png"),  img_wl)
+#         save_rgb01(os.path.join(out_dir, f"sample_{i:02d}_wrist_right.png"), img_wr)
 
 #         # optional: quick strip for visual parity check
 #         try:

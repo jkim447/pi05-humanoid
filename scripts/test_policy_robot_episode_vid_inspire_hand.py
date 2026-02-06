@@ -24,25 +24,30 @@ from openpi_client import image_tools
 stride = 3
 demo = 3
 IMG_SIZE = 224
-PROMPT   = "vertical_pick_place"
+PROMPT   = "bus_the_table"
+
+IMG_FMT = f"/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING/demo_{demo}/left/{{:06d}}.jpg"
+LEFT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING/demo_{demo}/left_wrist/{{:06d}}.jpg"
+RIGHT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING/demo_{demo}/right_wrist/{{:06d}}.jpg"
+CSV_PATH = f"/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING/demo_{demo}/ee_hand.csv"
 
 # IMG_FMT = f"/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT/demo_{demo}/left/{{:06d}}.jpg"
 # LEFT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT/demo_{demo}/left_wrist/{{:06d}}.jpg"
 # RIGHT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT/demo_{demo}/right_wrist/{{:06d}}.jpg"
 # CSV_PATH = f"/iris/projects/humanoid/dataset/New_QUEST_DATA_ROBOT/demo_{demo}/ee_hand.csv"
 
-IMG_FMT = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/left/{{:06d}}.jpg"
-LEFT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/left_wrist/{{:06d}}.jpg"
-RIGHT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/right_wrist/{{:06d}}.jpg"
-CSV_PATH = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/ee_hand.csv"
+# IMG_FMT = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/left/{{:06d}}.jpg"
+# LEFT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/left_wrist/{{:06d}}.jpg"
+# RIGHT_WRIST_IMG_FMT = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/right_wrist/{{:06d}}.jpg"
+# CSV_PATH = f"/iris/projects/humanoid/dataset/DEMO_PICK_PLACE/yellow_duck/demo_{demo}/ee_hand.csv"
 
 # IMG_FMT = f"/iris/projects/humanoid/openpi/scripts/demo_test2/left/{{:06d}}.jpg"
 # LEFT_WRIST_IMG_FMT = f"/iris/projects/humanoid/openpi/scripts/demo_test2/left_wrist/{{:06d}}.jpg"
 # RIGHT_WRIST_IMG_FMT = f"/iris/projects/humanoid/openpi/scripts/demo_test2/right_wrist/{{:06d}}.jpg"
 # CSV_PATH = f"/iris/projects/humanoid/openpi/scripts/demo_test2/ee_hand.csv"
 
-right_hand_cols = [f"right_hand_{i}" for i in range(20)]
-left_hand_cols = [f"left_hand_{i}" for i in range(20)]
+right_hand_cols = [f"right_hand_{i}" for i in range(6)]
+left_hand_cols = [f"left_hand_{i}" for i in range(6)]
 
 # Intrinsics (use as-is, no scaling)
 K_LEFT  = np.array([[730.2571411132812, 0.0, 637.2598876953125],
@@ -136,7 +141,7 @@ def _in_bounds(p, w, h):
 
 # ──────────────────── load policy & warm up ─────────────────────
 conf      = cfg.get_config("pi05_galaxea_egodex_abs_joints")
-ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_abs_joints/galaxea_egodex_abs_joints/3999")
+ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_abs_joints/galaxea_egodex_abs_joints_trash_sorting_robot_data_only_baseline_02052026/3999")
 policy    = policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ───────────────────────── episode loop ─────────────────────────
@@ -175,11 +180,11 @@ for t in range(N):
         return np.asarray(vals, dtype=np.float32)
 
     # compute state
-    def _cmd7(row, side: str):
-        cols = ([f"left_hand_{i}"  for i in range(1, 8)]
+    def _cmd6(row, side: str):
+        cols = ([f"left_hand_{i}"  for i in range(0, 6)]
                 if side == "left" else
-                [f"right_hand_{i}" for i in range(1, 8)])
-        return _read_joint_array(row, cols)  # (7,)
+                [f"right_hand_{i}" for i in range(0, 6)])
+        return _read_joint_array(row, cols)  # (6,)
 
     def _world_to_cam3(p_world3):
         """Transform a single 3D point from robot base -> left camera frame."""
@@ -208,13 +213,19 @@ for t in range(N):
 
     row0 = df.iloc[t]
     
-    cmd7L = _cmd7(row0, "left")
-    cmd7R = _cmd7(row0, "right")
+    cmd6L = _cmd6(row0, "left")
+    cmd6R = _cmd6(row0, "right")
+
+    # get torso joints
+    tj_2 = np.array([row0["torso_joint_2"]]).reshape(1)
+    tj_3 = np.array([row0["torso_joint_3"]]).reshape(1)
+
 
     pL0, oL0 = _row_wrist_pose6d_in_left_cam(row0, "left")
     pR0, oR0 = _row_wrist_pose6d_in_left_cam(row0, "right")
 
-    state = np.concatenate([pL0, oL0, pR0, oR0, cmd7L, cmd7R], axis=0).astype(np.float32)  # (32,)
+    # print(pL0.shape, cmd6L.shape, tj_2.shape)
+    state = np.concatenate([pL0, oL0, pR0, oR0, cmd6L, cmd6R, tj_2, tj_3], axis=0).astype(np.float32)  # (32,)
 
     example = {
         "state": jnp.asarray(state),

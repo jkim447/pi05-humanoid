@@ -212,6 +212,8 @@ def create_torch_dataset(
                 norm_stats_path=entry.norm_stats_path,  # TODO: specify norm stats path if needed
                 ee_to_hand_left_xyz=entry.ee_to_hand_left_xyz,
                 ee_to_hand_right_xyz=entry.ee_to_hand_right_xyz,
+                rotate_wrist_img=entry.rotate_wrist_img,
+                robot_hand_type=entry.robot_hand_type,
             )
         elif entry.kind == "human":
             ds = HumanDatasetKeypointsJoints(

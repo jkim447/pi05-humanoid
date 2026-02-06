@@ -197,6 +197,21 @@ class HumanDatasetKeypointsJoints(Dataset):
             key=lambda p: _demo_key(os.path.basename(p))
         )
 
+        # TODO: use me for changing the amount of data used!
+        # --- HARD-CODED SUBSAMPLING ---
+        # TO USE: Uncomment ONE of the lines below. To use 100%, keep all commented.
+        # pct = 0.33  # 33% of data
+        pct = 0.66  # 66% of data
+
+        if 'pct' in locals():
+            random.seed(42)
+            num_to_keep = max(1, int(len(episode_dirs) * pct))
+            episode_dirs = random.sample(episode_dirs, num_to_keep)
+            episode_dirs.sort(key=lambda p: _demo_key(os.path.basename(p)))
+            print(f"\n[DEBUG] Subsampled to {pct*100}%: {len(episode_dirs)} episodes remaining.\n")
+        # ------------------------------
+        # assert False
+
         # TODO: use me only when computing norm stats!
         # num_episodes_to_keep = 20
         # if len(episode_dirs) > num_episodes_to_keep:
@@ -559,7 +574,7 @@ class HumanDatasetKeypointsJoints(Dataset):
         #########################################################
 
         #########################################################
-        # TODO: use me for the overlay baseline
+        # TODO: use me for the overlay baseline (egomimic)
         #########################################################
         # if self.overlay:
         #     # A. Black out segmented regions (if mask exists)
@@ -622,88 +637,88 @@ class HumanDatasetKeypointsJoints(Dataset):
 
 # TODO: make sure to comment out vis below!
 # test_human_dataset_simple.py
-# import os
-# import cv2
-# import torch
-# from torch.utils.data import DataLoader
+import os
+import cv2
+import torch
+from torch.utils.data import DataLoader
 
-# # import the dataset class from wherever you saved it
-# # from my_datasets import HumanDatasetKeypointsJoints_Simple
-# # from human_dataset_simple import HumanDatasetKeypointsJoints_Simple  # <-- adjust path/name
+# import the dataset class from wherever you saved it
+# from my_datasets import HumanDatasetKeypointsJoints_Simple
+# from human_dataset_simple import HumanDatasetKeypointsJoints_Simple  # <-- adjust path/name
 
-# def _ensure_dir(d):
-#     if not os.path.exists(d):
-#         os.makedirs(d, exist_ok=True)
+def _ensure_dir(d):
+    if not os.path.exists(d):
+        os.makedirs(d, exist_ok=True)
 
-# def save_rgb_image(rgb_tensor_or_array, out_path):
-#     """
-#     rgb_tensor_or_array: (H, W, 3) in [0,1], torch.Tensor or np.ndarray
-#     Saves as JPG using OpenCV (converts RGB->BGR).
-#     """
-#     if isinstance(rgb_tensor_or_array, torch.Tensor):
-#         img = rgb_tensor_or_array.detach().cpu().numpy()
-#     else:
-#         img = rgb_tensor_or_array
-#     # img = (img.clip(0, 1) * 255.0).astype("uint8")
-#     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-#     # print(bgr.shape, bgr.dtype, bgr.min(), bgr.max())
-#     cv2.imwrite(out_path, bgr)
+def save_rgb_image(rgb_tensor_or_array, out_path):
+    """
+    rgb_tensor_or_array: (H, W, 3) in [0,1], torch.Tensor or np.ndarray
+    Saves as JPG using OpenCV (converts RGB->BGR).
+    """
+    if isinstance(rgb_tensor_or_array, torch.Tensor):
+        img = rgb_tensor_or_array.detach().cpu().numpy()
+    else:
+        img = rgb_tensor_or_array
+    # img = (img.clip(0, 1) * 255.0).astype("uint8")
+    bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    # print(bgr.shape, bgr.dtype, bgr.min(), bgr.max())
+    cv2.imwrite(out_path, bgr)
 
 
-# # HUMAN_PICK_REDCUBE_1107
-# # HUMAN_PICK_CHICKEN_1107
-# # HUMAN_PICK_CORN_1107
-# # HUMAN_PICK_PEPPER_1107
+# HUMAN_PICK_REDCUBE_1107
+# HUMAN_PICK_CHICKEN_1107
+# HUMAN_PICK_CORN_1107
+# HUMAN_PICK_PEPPER_1107
 
-# def main():
-#     ds = HumanDatasetKeypointsJoints(
-#         # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
-#         # dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105",
-#         dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
-#         chunk_size=20,
-#         stride=2,
-#         img_height=224,
-#         img_width=224,
-#         overlay=True,   # draws wrist + 5 tips on the resized left image
-#         custom_instruction="vertical_pick_place",
-#         overlay_both=True,  # do not overlay left hand
-#         # both_actions=True,  # include left-hand actions as well # TODO: change this if needed
-#     )
+def main():
+    ds = HumanDatasetKeypointsJoints(
+        # dataset_dir="/iris/projects/humanoid/hamer/keypoint_human_data_red_inbox",
+        # dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_BOX_PLACE_COMBO_1105",
+        dataset_dir = "/iris/projects/humanoid/dataset/HUMAN_OPEN_BOX_COMBO_1111",
+        chunk_size=20,
+        stride=2,
+        img_height=224,
+        img_width=224,
+        overlay=True,   # draws wrist + 5 tips on the resized left image
+        custom_instruction="vertical_pick_place",
+        overlay_both=True,  # do not overlay left hand
+        # both_actions=True,  # include left-hand actions as well # TODO: change this if needed
+    )
 
-#     loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
+    loader = DataLoader(ds, batch_size=1, shuffle=True, num_workers=0)
 
-#     out_dir = "vis_samples_simple"
-#     _ensure_dir(out_dir)
+    out_dir = "vis_samples_simple"
+    _ensure_dir(out_dir)
 
-#     for i, batch in enumerate(loader):
-#         # batch is a dict with:
-#         #   image:   (B, H, W, 3) float32 in [0,1]
-#         #   state:   (B, 44)
-#         #   actions: (B, 2*chunk_size, 44)
-#         #   task:    list[str] of length B
-#         image   = batch["image"][0]      # (H, W, 3)
-#         state   = batch["state"][0]      # (44,)
-#         actions = batch["actions"][0]    # (2*chunk, 44)
+    for i, batch in enumerate(loader):
+        # batch is a dict with:
+        #   image:   (B, H, W, 3) float32 in [0,1]
+        #   state:   (B, 44)
+        #   actions: (B, 2*chunk_size, 44)
+        #   task:    list[str] of length B
+        image   = batch["image"][0]      # (H, W, 3)
+        state   = batch["state"][0]      # (44,)
+        actions = batch["actions"][0]    # (2*chunk, 44)
 
-#         out_img = os.path.join(out_dir, f"sample_{i:02d}.jpg")
-#         # print(image.shape)
-#         # print(image.max(), image.min())
-#         # assert False
-#         save_rgb_image(image, out_img)
+        out_img = os.path.join(out_dir, f"sample_{i:02d}.jpg")
+        # print(image.shape)
+        # print(image.max(), image.min())
+        # assert False
+        save_rgb_image(image, out_img)
 
-#         # quick shape + small value checks
-#         print(f"[{i}] saved:", out_img)
-#         print("   state:",   tuple(state.shape))
-#         print("   actions:", tuple(actions.shape))
-#         # show first few dims for a quick glance
-#         with torch.no_grad():
-#             s_np = state.detach().cpu().numpy()
-#             a_np = actions.detach().cpu().numpy()
-#         print("   state[:8]:", s_np[:8])
-#         print("   actions[1, :8] (first right-hand token):", a_np[2, :8])
+        # quick shape + small value checks
+        print(f"[{i}] saved:", out_img)
+        print("   state:",   tuple(state.shape))
+        print("   actions:", tuple(actions.shape))
+        # show first few dims for a quick glance
+        with torch.no_grad():
+            s_np = state.detach().cpu().numpy()
+            a_np = actions.detach().cpu().numpy()
+        print("   state[:8]:", s_np[:8])
+        print("   actions[1, :8] (first right-hand token):", a_np[2, :8])
 
-#         if i >= 30:  # first 5 samples only
-#             break
+        if i >= 30:  # first 5 samples only
+            break
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

@@ -996,7 +996,7 @@ _CONFIGS = [
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
         num_train_steps=4000, # TODO: change as needed
-        batch_size=64, # TODO: change as needed
+        batch_size=32, # TODO: change as needed
         num_workers=2,
         save_interval = 1000, # TODO undo me 
         keep_period = 10000, # TODO: undo me
