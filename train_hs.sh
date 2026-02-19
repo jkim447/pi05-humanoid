@@ -4,10 +4,10 @@
 #SBATCH --partition=iris-hi
 #SBATCH --nodelist=iris-hgx-1
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --time=120:00:00
-#SBATCH --mem=250G                  # adjust if you need less/more
-#SBATCH --cpus-per-task=20          # tune if you want more data-loader threads
+#SBATCH --mem=500G                  # adjust if you need less/more
+#SBATCH --cpus-per-task=10         # tune if you want more data-loader threads
 #SBATCH --mail-user=jwbkim@stanford.edu
 #SBATCH --mail-type=ALL
 #SBATCH --account=iris

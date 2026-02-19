@@ -926,6 +926,7 @@ _CONFIGS = [
         ),
         # Initialize from the Pi-0 base checkpoint (same as pi0_libero).
         weight_loader=weight_loaders.CheckpointWeightLoader(
+            # TODO: UNCOMMENT ME WHEN TRAINING FROM BASE CKPT!
             "gs://openpi-assets/checkpoints/pi05_base/params" 
         ),
 
@@ -979,7 +980,10 @@ _CONFIGS = [
         # Initialize from the Pi-0 base checkpoint (same as pi0_libero).
         # TODO: UNDO ME TO TRAIN FROM THE BASE CHECKPOIINT
         weight_loader=weight_loaders.CheckpointWeightLoader(
+            # TODO: UNCOMMENT ME WHEN TRAINING FROM BASE CKPT!
             "gs://openpi-assets/checkpoints/pi05_base/params" 
+            # TODO: DELETE ME, THIS IS FOR CONTINUED TRAINING!
+            # "/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_abs_joints/galaxea_egodex_abs_joints_trash_sorting_robot_data_only_baseline_02052026/3999"
         ),
 
         # TODO: COMMET ME OUT! use me only if training from scratch
@@ -995,11 +999,11 @@ _CONFIGS = [
         # ema_decay=0.999, # default is 0.99 if unspecified
 
         # Training hyper-parameters – start with the same settings as pi0_libero.
-        num_train_steps=4000, # TODO: change as needed
-        batch_size=32, # TODO: change as needed
+        num_train_steps=20000, # TODO: change as needed
+        batch_size=128, # TODO: change as needed
         num_workers=2,
         save_interval = 1000, # TODO undo me 
-        keep_period = 10000, # TODO: undo me
+        keep_period = 2000, # TODO: undo me
 
         # batch_size=32, # TODO: change as needed
         # num_workers=0

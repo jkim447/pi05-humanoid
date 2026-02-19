@@ -43,10 +43,10 @@ rotate_wrist_img = True # only for trash sorting data, using inspire hands
 DATASETS = [
     DatasetEntry(
         kind="robot",
-        path="/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING",
+        path="/iris/projects/humanoid/dataset/ROBOT_TRASH_SORTING_0211",
         weight=1.0,
         task ="bus_the_table",
-        stride=3,
+        stride=2, # TODO: NOTE THAT STRIDE 2 IS USED FOR TESTING PURPOSES!
         overlay=overlay,
         mask_wrist=True,
         apply_custom_norm=False,

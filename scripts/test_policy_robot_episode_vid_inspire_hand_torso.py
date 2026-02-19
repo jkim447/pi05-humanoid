@@ -1,6 +1,6 @@
 """
 USAGE:
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/test_policy_robot_episode_vid_inspire_hand.py
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/test_policy_robot_episode_vid_inspire_hand_torso.py
 """
 
 # ─────────────────────────── imports ────────────────────────────
@@ -21,8 +21,8 @@ from scipy.spatial.transform import Rotation as R
 from openpi_client import image_tools
 
 # ─────────────—— file locations & basic constants —──────────────
-stride = 3
-demo = 3
+stride = 2 # TODO: NOTE STRIDE = 2, CHANGE ME AS NEEDED
+demo = 30
 IMG_SIZE = 224
 PROMPT   = "bus_the_table"
 
@@ -121,10 +121,14 @@ def _row_to_action(row):
     joints20_l = np.asarray([row[c] for c in left_hand_cols], dtype=np.float32)
     joints20_r = np.asarray([row[c] for c in right_hand_cols], dtype=np.float32)
 
+    torso_joint_2 = np.array([row["torso_joint_2"]], dtype=np.float32)
+    torso_joint_3 = np.array([row["torso_joint_3"]], dtype=np.float32)
+
     # Final action vector: [pos_cam(3), ori6d(6), joints20(20)] = 29 dims
+    # print(p_cam_l.shape, ori6d_l.shape, p_cam_r.shape, ori6d_r.shape, joints20_l.shape, joints20_r.shape, torso_joint_2.shape, torso_joint_3.shape)
     a = np.concatenate([p_cam_l.astype(np.float32), ori6d_l.astype(np.float32), 
                         p_cam_r.astype(np.float32), ori6d_r.astype(np.float32), 
-                        joints20_l, joints20_r], axis=0)
+                        joints20_l, joints20_r, torso_joint_2, torso_joint_3], axis=0)
     return a  # (29,)
 
 def _draw_path(img_bgr, pts, color_bgr, thickness=2, radius=2):
@@ -141,7 +145,7 @@ def _in_bounds(p, w, h):
 
 # ──────────────────── load policy & warm up ─────────────────────
 conf      = cfg.get_config("pi05_galaxea_egodex_abs_joints")
-ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_abs_joints/galaxea_egodex_abs_joints_trash_sorting_robot_data_only_baseline_02052026_redo/19999")
+ckpt_dir  = download.maybe_download("/iris/projects/humanoid/openpi/checkpoints/pi05_galaxea_egodex_abs_joints/galaxea_egodex_abs_joints_trash_sorting_robot_data_only_baseline_02092026/5000")
 policy    = policy_config.create_trained_policy(conf, ckpt_dir)
 
 # ───────────────────────── episode loop ─────────────────────────
@@ -152,6 +156,7 @@ df = pd.read_csv(CSV_PATH)
 N  = len(df)
 
 for t in range(N):
+    print("processing frame", t, end="\r")
     # ----- build per-frame inputs aligned to time t -----
     img_path_t = IMG_FMT.format(t)
     lw_img_path_t = LEFT_WRIST_IMG_FMT.format(t)
@@ -239,6 +244,9 @@ for t in range(N):
     pred = np.asarray(policy.infer(example)["actions"])   # e.g., (T_pred, 26)
     traj_pred_L = pred[0::2, 0:3]                         # left-wrist cam-frame XYZt
     traj_pred_R = pred[1::2, 0:3]                         # right-wrist cam-frame XYZ
+    torso_pred = pred[0::2, 15:17]                                # torso joints from pred (assumes interleaved pred format)
+    # print(pred.shape)
+    # assert False
 
     # ----- build GT window starting at t, matching pred length/stride -----
     T_half = int(len(pred) // 2)
@@ -248,6 +256,7 @@ for t in range(N):
     gt = np.stack([_row_to_action(r) for _, r in gt_rows.iterrows()], axis=0)  # (L, 29)
     traj_gt_L = gt[:, 0:3]
     traj_gt_R = gt[:, 9:12]
+    torso_gt = gt[:, -2:]
 
     # trim to common length
         # trim to common length
@@ -301,9 +310,61 @@ for t in range(N):
     cv2.putText(img_draw, "GT left wrist",    (20, 85),  cv2.FONT_HERSHEY_SIMPLEX, 0.6, COL_GT_L,   2, cv2.LINE_AA)
     cv2.putText(img_draw, "Pred left wrist",  (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, COL_PRED_L, 2, cv2.LINE_AA)
 
-    # save per-frame
+    # 1. Prepare Torso Data for Plotting
+    # torso_pred and torso_gt are (L, 2) arrays (joint 2 and joint 3)
+    time_steps = np.arange(L)
+    
+    # Create a small figure for the torso joints
+    fig, ax = plt.subplots(figsize=(6, 6)) # Fixed size for easy concatenation
+    
+    # Joint 2
+    ax.plot(time_steps, torso_gt[:, 0], 'g-', label='GT J2', alpha=0.6)
+    ax.plot(time_steps, torso_pred[:, 0], 'r--', label='Pred J2')
+    
+    # Joint 3
+    ax.plot(time_steps, torso_gt[:, 1], 'c-', label='GT J3', alpha=0.6)
+    ax.plot(time_steps, torso_pred[:, 1], 'm--', label='Pred J3')
+    
+    ax.set_title(f"Torso Joints (Frame {t})")
+    ax.set_xlabel("Horizon Step")
+    ax.set_ylabel("Joint Angle")
+    ax.legend(loc='upper right', fontsize='small')
+    ax.grid(True, alpha=0.3)
+
+    # 2. Convert Matplotlib plot to an OpenCV image
+    # 2. Convert Matplotlib plot to an OpenCV image
+    fig.canvas.draw()
+    
+    # Get the RGBA buffer from the canvas
+    rgba_buffer = fig.canvas.buffer_rgba()
+    
+    # Convert buffer to a numpy array and reshape
+    plot_img = np.array(rgba_buffer)
+    
+    # Convert RGBA (Matplotlib) to BGR (OpenCV)
+    plot_img = cv2.cvtColor(plot_img, cv2.COLOR_RGBA2BGR)
+    
+    plt.close(fig) # Free memory
+
+    # 3. Resize Plot to match the height of the main image
+    # We want to stack them horizontally: [Main Image][Torso Plot]
+    h, w = img_draw.shape[:2]
+    plot_h, plot_w = plot_img.shape[:2]
+    
+    # Calculate new width for the plot to maintain aspect ratio while matching height
+    aspect_ratio = plot_w / plot_h
+    new_plot_w = int(h * aspect_ratio)
+    plot_img_resized = cv2.resize(plot_img, (new_plot_w, h))
+
+    # 4. Concatenate and Save
+    final_vis = cv2.hconcat([img_draw, plot_img_resized])
+    
     out_path = os.path.join(OUT_DIR, f"{t:06d}.jpg")
-    cv2.imwrite(out_path, img_draw)
+    cv2.imwrite(out_path, final_vis)
+
+    # # save per-frame
+    # out_path = os.path.join(OUT_DIR, f"{t:06d}.jpg")
+    # cv2.imwrite(out_path, img_draw)
 
 print(f"Saved per-frame full trajectories to: {OUT_DIR}")
 
